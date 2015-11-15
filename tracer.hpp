@@ -4,22 +4,23 @@
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 // 
-// 1. Redistributions of source code must retain the above copyright notice, this
-//    list of conditions and the following disclaimer. 
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer. 
 // 2. Redistributions in binary form must reproduce the above copyright notice,
 //    this list of conditions and the following disclaimer in the documentation
 //    and/or other materials provided with the distribution.
 // 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 
 #ifndef __CALICO__TRACER__HPP__
@@ -53,6 +54,12 @@ public:
 
         The Float routines must return a floating-point value of any precision
         so long as it is consistent.
+
+        The ResultArray must provide just a single method named set_result that
+        has the signature
+
+            set_hit(MeshAdapter::FaceId face, Real t, 
+                    Real hit_x, Real hit_y, Real hit_z);
     */
     template <typename InputArray, typename ResultArray>
     void trace_rays(const InputArray &input, ResultArray &result)
@@ -61,7 +68,8 @@ public:
         const size_t face_count = _mesh.size();
 
         // Outerloop on rays so that we can use an accelerator structure inside
-        for (size_t i = 0u; i < count; ++i) {
+        for (size_t i = 0u; i < count; ++i) 
+        {
             Float t(0.), hit_x(0.), hit_y(0.), hit_z(0.);
             MeshAdapter::FaceId face(MeshAdapter::ray_miss_id());
 
@@ -73,7 +81,7 @@ public:
                                            input.direction_z(i),
                                            t,
                                            face, hit_x, hit_y, hit_z);
-            result.set_hit(t, face, hit_x, hit_y, hit_z);
+            result.set_hit(face, t, hit_x, hit_y, hit_z);
         }// end loop over rays
     }
 
