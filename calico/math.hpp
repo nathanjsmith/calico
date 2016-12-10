@@ -62,6 +62,16 @@ Float length(const Float &x, const Float &y, const Float &z) {
 //=============================================================================
 
 
+template <typename Float>
+void normalize(Float &x, Float &y, Float &z) {
+  Float len = length(x, y, z);
+  x /= len;
+  y /= len;
+  z /= len;
+}
+//=============================================================================
+
+
 /**
     Right-handed C = A x B
 
@@ -126,9 +136,9 @@ Float area(const Float &x0, const Float &y0, const Float &z0,
     d.  The distance t along the ray that the ray intersects the plane is
     returned.
 
-    @param nx   Plane's normal vector x
-    @param ny   Plane's normal vector y
-    @param nz   Plane's normal vector z
+    @param nx   Plane's unit-normal vector x
+    @param ny   Plane's unit-normal vector y
+    @param nz   Plane's unit-normal vector z
     @param d    Plane's signed distance from the origin
 
     @param sx   Start x of the ray
@@ -147,7 +157,7 @@ Float ray_plane_intersection(
         const Float &sx, const Float &sy, const Float &sz,
         const Float &dx, const Float &dy, const Float &dz)
 {
-    return -(dot(sx, sy, sz, nx, ny, nz) + d) / dot(dx, dy, dz, nx, ny, nz);
+    return -(dot(sx, sy, sz, nx, ny, nz) - d) / dot(dx, dy, dz, nx, ny, nz);
 }
 //=============================================================================
 
@@ -164,39 +174,28 @@ public:
         //                                            v = area(A,C,P) / area(A,B,C)
         //                                            w = area(B,C,P) / area(A,B,C)
 
-        // Translate the triangle to be at the origin
-        Float bx = mesh.x(face, 1) - mesh.x(face, 0);
-        Float by = mesh.y(face, 1) - mesh.y(face, 0);
-        Float bz = mesh.z(face, 1) - mesh.z(face, 0);
-
-        Float cx = mesh.x(face, 2) - mesh.x(face, 0);
-        Float cy = mesh.y(face, 2) - mesh.y(face, 0);
-        Float cz = mesh.z(face, 2) - mesh.z(face, 0);
-
-        Float px = p_x - mesh.x(face, 0);
-        Float py = p_y - mesh.y(face, 0);
-        Float pz = p_z - mesh.z(face, 0);
-
         // Get the area of the triangle we're testing and double it to make the
         // following calculations faster.
-        Float inverse_double_area = Float(1) / (mesh.area(face) * Float(2));
+        Float facet_area = mesh.area(face);
 
         // Find the area of triangle (A, B, P) and scale it by the area of the
         // whole parent triangle.  We use double the area because the length of the
         // cross-product is actually the area of the parallelogram, which is twice
         // the triangle area.
-        Float tmp_x, tmp_y, tmp_z;
-        cross(bx, by, bz, px, py, pz, tmp_x, tmp_y, tmp_z);
-        Float u = length(tmp_x, tmp_y, tmp_z) * inverse_double_area;
+        Float u = math::area(mesh.x(face, 0), mesh.y(face, 0), mesh.z(face, 0), 
+                             mesh.x(face, 1), mesh.y(face, 1), mesh.z(face, 1), 
+                             p_x, p_y, p_z) / facet_area;
 
-        // Find the area of triangle (A, C, P) and scale it by the area of the
+        // Find the area of triangle (C, A, P) and scale it by the area of the
         // whole parent triangle.  We use double the area because the length of the
         // cross-product is actually the area of the parallelogram, which is twice
         // the triangle area.
-        cross(cx, cy, cz, px, py, pz, tmp_x, tmp_y, tmp_z);
-        Float v = length(tmp_x, tmp_y, tmp_z) * inverse_double_area;
+        Float v = math::area(mesh.x(face, 2), mesh.y(face, 2), mesh.z(face, 2), 
+                             mesh.x(face, 0), mesh.y(face, 0), mesh.z(face, 0), 
+                             p_x, p_y, p_z) / facet_area;
 
         Float w = Float(1) - u - v;
+
         return (Float(0) <= u && u <= Float(1) &&
                 Float(0) <= v && v <= Float(1) &&
                 Float(0) <= w && w <= Float(1));
@@ -210,7 +209,7 @@ public:
     The same as MollerTrumboreContainmentTest except that it computes the
     value w from the point and the triangle corners rather than from u and v.
 */
-template <typename Mesh, typename Float>
+template <typename Float, typename Mesh>
 class PluckerContainmentTest
 {
 public:
@@ -224,17 +223,17 @@ public:
 
         // Treat the point as the origin and translate the three corners
         // accordingly
-        const Float ax = mesh.corner_a_x(face) - px;
-        const Float ay = mesh.corner_a_y(face) - py;
-        const Float az = mesh.corner_a_z(face) - pz;
+        const Float ax = mesh.x(face, 0) - px;
+        const Float ay = mesh.y(face, 0) - py;
+        const Float az = mesh.z(face, 0) - pz;
 
-        const Float bx = mesh.corner_b_x(face) - px;
-        const Float by = mesh.corner_b_y(face) - py;
-        const Float bz = mesh.corner_b_z(face) - pz;
+        const Float bx = mesh.x(face, 1) - px;
+        const Float by = mesh.y(face, 1) - py;
+        const Float bz = mesh.z(face, 1) - pz;
 
-        const Float cx = mesh.corner_c_x(face) - px;
-        const Float cy = mesh.corner_c_y(face) - py;
-        const Float cz = mesh.corner_c_z(face) - pz;
+        const Float cx = mesh.x(face, 2) - px;
+        const Float cy = mesh.y(face, 2) - py;
+        const Float cz = mesh.z(face, 2) - pz;
 
         // Get the area of the triangle we're testing and double it to make the
         // following calculations faster.

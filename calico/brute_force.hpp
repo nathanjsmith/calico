@@ -60,7 +60,7 @@ public:
         face = Mesh::ray_miss_id();
         t    = limits::infinity();
 
-        for (size_t f = 0u; f < _mesh.size(); ++f) {
+        for (typename Mesh::FaceId f = 0u; f < _mesh.size(); ++f) {
             // If the ray lies in the plane, this should return Inf as the
             // intersection distance.  That will get filtered out in the
             // following tests.
@@ -82,9 +82,9 @@ public:
             // TODO: Try considering all hits and see if it does better for
             //       branch prediction
             if (Float(0.) < tmp_t && tmp_t < t) {
-                Float tmp_hit_x = start_x + direction_x * tmp_t;
-                Float tmp_hit_y = start_y + direction_y * tmp_t;
-                Float tmp_hit_z = start_z + direction_z * tmp_t;
+                Float tmp_hit_x = start_x + (direction_x * tmp_t);
+                Float tmp_hit_y = start_y + (direction_y * tmp_t);
+                Float tmp_hit_z = start_z + (direction_z * tmp_t);
 
                 if (Containment::contains(_mesh, f, tmp_hit_x, tmp_hit_y, tmp_hit_z)) {
                     hit_x = tmp_hit_x;

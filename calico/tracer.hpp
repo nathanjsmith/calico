@@ -28,6 +28,8 @@
 
 #include <calico/math.hpp>
 
+#include <iostream>
+
 namespace calico {
 
 

@@ -49,7 +49,7 @@ class SoaInput {
 public:
     typedef std::size_t RayId;
 
-    SoaInput(RayId &size, Array &start_x, Array &start_y, Array &start_z,
+    SoaInput(RayId size, Array &start_x, Array &start_y, Array &start_z,
              Array &direction_x, Array &direction_y, Array &direction_z)
         : _size(size), 
           _start_x(start_x), _start_y(start_y), _start_z(start_z),
@@ -69,7 +69,7 @@ public:
     Float direction_z(RayId indez) const {return _direction_z[indez];}
 
 private:
-    RayId &_size;
+    RayId  _size;
 
     Array &_start_x;
     Array &_start_y;

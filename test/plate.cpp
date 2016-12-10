@@ -34,9 +34,10 @@
 
 int main(int argc, const char *argv[]) {
 
-  typedef float Float;
+  typedef double Float;
   typedef calico::canned_meshes::Plate<Float> Mesh;
-  typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
+  typedef calico::math::PluckerContainmentTest<Float, Mesh> Containment;
+  // typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
   typedef calico::accelerator::BruteForce<Float, Mesh, Containment> Accelerator;
 
   Mesh plate;
@@ -67,7 +68,7 @@ int main(int argc, const char *argv[]) {
   tracer.trace_rays(rays, results);
 
 
-  std::cerr << "Hit facet " << t[0] << " at (" 
+  std::cerr << "Hit facet " << face_id[0] << " at (" 
             << hit_x[0] << ", " << hit_y[0] << ", " << hit_z[0] 
             << ")" << std::endl;
 

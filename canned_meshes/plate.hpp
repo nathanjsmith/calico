@@ -26,6 +26,7 @@
 #define __CALICO__CANNED_MESHES__PLATE__HPP__
 
 #include <vector>
+#include <iostream>
 
 namespace calico {
 namespace canned_meshes {
@@ -38,7 +39,7 @@ namespace canned_meshes {
 template <typename Float>
 class Plate {
 public:
-    typedef std::size_t FaceId;
+    typedef int FaceId;
     typedef std::size_t VertexId;
 
     Plate() {
@@ -48,52 +49,53 @@ public:
         _x.resize(2*3);
         _y.resize(2*3);
         _z.resize(2*3);
-        _area.resize(3);
+        _area.resize(2);
+        _d.resize(2);
+
+        Float plate_z = 3.;
 
         // Face 1
         _x[0] = 1;
-        _y[0] = 1;
-        _z[0] = 0;
+        _y[0] = -1;
+        _z[0] = plate_z;
 
-        _x[1] = 0;
+        _x[1] = 1;
         _y[1] = 1;
-        _z[1] = 0;
+        _z[1] = plate_z;
 
-        _x[2] = 1;
-        _y[2] = 0;
-        _z[2] = 0;
-
-        _normal_x[0] = 0;
-        _normal_y[0] = 0;
-        _normal_z[0] = 1;
-
-        _d[0] = 0.;
+        _x[2] = -1;
+        _y[2] = 1;
+        _z[2] = plate_z;
 
 
         // Face 2
-        _x[3] = 1;
-        _y[3] = 0;
-        _z[3] = 0;
+        _x[3] = -1;
+        _y[3] = 1;
+        _z[3] = plate_z;
 
-        _x[4] = 0;
-        _y[4] = 0;
-        _z[4] = 0;
+        _x[4] = -1;
+        _y[4] = -1;
+        _z[4] = plate_z;
 
         _x[5] = 1;
-        _y[5] = 0;
-        _z[5] = 0;
-
-        _normal_x[1] = 0;
-        _normal_y[1] = 0;
-        _normal_z[1] = 1;
-
-        _d[1] = 0.;
+        _y[5] = -1;
+        _z[5] = plate_z;
 
         for (FaceId i = 0u; i < 2u; ++i) {
+            // Automatically compute the normal and d for the triangle
+            math::cross(x(i,2) - x(i,1), y(i,2) - y(i,1), z(i,2) - z(i,1),
+                        x(i,0) - x(i,1), y(i,0) - y(i,1), z(i,0) - z(i,1),
+                        _normal_x[i], _normal_y[i], _normal_z[i]);
+            math::normalize(_normal_x[i], _normal_y[i], _normal_z[i]);
+
+            _d[i] = math::dot(x(i,0), y(i,0), z(i,0),
+                             _normal_x[i], _normal_y[i], _normal_z[i]);
+
             _area[i] = math::area(x(i,0), y(i,0), z(i,0),
                                   x(i,1), y(i,1), z(i,1),
                                   x(i,2), y(i,2), z(i,2));
 
+            // Now update the bounding box
             _min_x = std::min(x(i, 0), _min_x);
             _min_y = std::min(y(i, 0), _min_y);
             _min_z = std::min(z(i, 0), _min_z);
