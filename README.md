@@ -1,5 +1,6 @@
+------
 Calico
-======
+------
 
 **Calico is under development and does not currently function.**
 
@@ -18,7 +19,7 @@ application specific.
 
 
 Uses
-----
+====
 
 Ideas for how Calico can be used include:
 
