@@ -27,9 +27,10 @@
 #define __CALICO__SOA_RESULT__HPP__
 
 namespace calico {
+namespace result {
 
-template <typename FaceId, typename Real, 
-          typename FaceIdArray, typename RealArray>
+template <typename Real, typename FaceId,
+          typename RealArray, typename FaceIdArray>
 class SoaResult
 {
 public:
@@ -41,9 +42,46 @@ public:
         _z_hit_array(z_hit_array)
     {
     }
+
+    void set_hit(size_t index, const FaceId &face_id, 
+                 const Real &t, const Real &x_hit, 
+                 const Real &y_hit, const Real &z_hit)
+    {
+      _face_array[index] = face_id;
+      _t_array[index] = t;
+      _x_hit_array[index] = x_hit;
+      _y_hit_array[index] = y_hit;
+      _z_hit_array[index] = z_hit;
+    }
+
+private:
+    FaceIdArray &_face_array;
+    RealArray   &_t_array;
+    RealArray   &_x_hit_array;
+    RealArray   &_y_hit_array;
+    RealArray   &_z_hit_array;
 };
 //=============================================================================
 
+
+template <typename Real, typename FaceId, 
+          typename RealArray, typename FaceIdArray>
+SoaResult<Real, FaceId, RealArray, FaceIdArray>
+  make_soa_result(FaceIdArray &face_array,
+                  RealArray &t_array, 
+                  RealArray &x_hit_array, 
+                  RealArray &y_hit_array, 
+                  RealArray &z_hit_array) {
+  return SoaResult<Real, FaceId, RealArray, FaceIdArray>(face_array, 
+                                                         t_array, 
+                                                         x_hit_array, 
+                                                         y_hit_array, 
+                                                         z_hit_array);
 }
+//=============================================================================
+
+
+}// end namespace calico::result
+}// end namespace calico
 
 #endif

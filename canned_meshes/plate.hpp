@@ -25,6 +25,8 @@
 #ifndef __CALICO__CANNED_MESHES__PLATE__HPP__
 #define __CALICO__CANNED_MESHES__PLATE__HPP__
 
+#include <vector>
+
 namespace calico {
 namespace canned_meshes {
 
@@ -36,8 +38,8 @@ namespace canned_meshes {
 template <typename Float>
 class Plate {
 public:
-    typedef int FaceId;
-    typedef int VertexId;
+    typedef std::size_t FaceId;
+    typedef std::size_t VertexId;
 
     Plate() {
         _normal_x.resize(2);
@@ -65,6 +67,8 @@ public:
         _normal_y[0] = 0;
         _normal_z[0] = 1;
 
+        _d[0] = 0.;
+
 
         // Face 2
         _x[3] = 1;
@@ -83,16 +87,12 @@ public:
         _normal_y[1] = 0;
         _normal_z[1] = 1;
 
-        for (FaceId i = 0u; i < 3u; ++i) {
-            Float xx, yy, zz;
-            math::cross(x(i, 1) - x(i, 0),
-                        y(i, 1) - y(i, 0),
-                        z(i, 1) - z(i, 0),
-                        x(i, 2) - x(i, 0),
-                        y(i, 2) - y(i, 0),
-                        z(i, 2) - z(i, 0),
-                        xx, yy, zz);
-            _area[i] = math::length(xx, yy, zz) * Float(0.5);
+        _d[1] = 0.;
+
+        for (FaceId i = 0u; i < 2u; ++i) {
+            _area[i] = math::area(x(i,0), y(i,0), z(i,0),
+                                  x(i,1), y(i,1), z(i,1),
+                                  x(i,2), y(i,2), z(i,2));
 
             _min_x = std::min(x(i, 0), _min_x);
             _min_y = std::min(y(i, 0), _min_y);
@@ -133,7 +133,7 @@ public:
         max_z = _max_z;
     }
     
-    FaceId ray_miss_id() const {return -1;}
+    static FaceId ray_miss_id() {return -1;}
 
     Float x(FaceId id, VertexId corner) const {return _x[id*3+corner];}
     Float y(FaceId id, VertexId corner) const {return _y[id*3+corner];}
@@ -143,18 +143,32 @@ public:
     Float normal_y(FaceId id) const {return _normal_y[id];}
     Float normal_z(FaceId id) const {return _normal_z[id];}
 
+    Float d(FaceId id) const {return _d[id];}
+
     Float area(FaceId id) const {return _area[id];}
+
+    FaceId size() const {return _normal_x.size();}
 
 private:
     std::vector<Float> _normal_x;
     std::vector<Float> _normal_y;
     std::vector<Float> _normal_z;
 
+    std::vector<Float> _d;
+
     std::vector<Float> _x;
     std::vector<Float> _y;
     std::vector<Float> _z;
 
     std::vector<Float> _area;
+
+    Float _min_x;
+    Float _min_y;
+    Float _min_z;
+
+    Float _max_x;
+    Float _max_y;
+    Float _max_z;
 };
 //=============================================================================
 
