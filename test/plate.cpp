@@ -24,9 +24,9 @@
 
 #include <calico/tracer.hpp>
 #include <calico/math.hpp>
-#include <calico/soa_input.hpp>
-#include <calico/soa_result.hpp>
-#include <calico/brute_force.hpp>
+#include <calico/input/soa_input.hpp>
+#include <calico/result/soa_result.hpp>
+#include <calico/accelerator/brute_force.hpp>
 
 #include <canned_meshes/plate.hpp>
 
