@@ -73,7 +73,7 @@ public:
         Float t(0.), hit_x(0.), hit_y(0.), hit_z(0.);
         for (std::size_t i = 0u; i < ray_count; ++i) 
         {
-            typename MeshAdapter::FaceId face(MeshAdapter::ray_miss_id());
+            typename MeshAdapter::FaceId face(MeshAdapter::ray_miss_id_c);
 
             _accelerator.find_intersection(input.start_x(i),
                                            input.start_y(i),

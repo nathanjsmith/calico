@@ -57,7 +57,7 @@ public:
                            Float &t, typename Mesh::FaceId &face,
                            Float &hit_x, Float &hit_y, Float &hit_z)
     {
-        face = Mesh::ray_miss_id();
+        face = Mesh::ray_miss_id_c;
         t    = limits::infinity();
 
         for (typename Mesh::FaceId f = 0u; f < _mesh.size(); ++f) {

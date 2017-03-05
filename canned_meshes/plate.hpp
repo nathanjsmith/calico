@@ -41,6 +41,8 @@ class Plate {
 public:
     typedef int FaceId;
     typedef std::size_t VertexId;
+    
+    static const FaceId ray_miss_id_c = -1;
 
     Plate() {
         _normal_x.resize(2);
@@ -134,8 +136,6 @@ public:
         max_y = _max_y;
         max_z = _max_z;
     }
-    
-    static FaceId ray_miss_id() {return -1;}
 
     Float x(FaceId id, VertexId corner) const {return _x[id*3+corner];}
     Float y(FaceId id, VertexId corner) const {return _y[id*3+corner];}
