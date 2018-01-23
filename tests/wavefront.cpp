@@ -28,23 +28,32 @@
 #include <calico/result/soa_result.hpp>
 #include <calico/accelerator/brute_force.hpp>
 
-#include <canned_meshes/plate.hpp>
+#include <utilities/wavefront.hpp>
 
 #include <iostream>
 
 int main(int argc, const char *argv[]) {
 
   typedef double Float;
-  typedef calico::canned_meshes::Plate<Float> Mesh;
+  typedef calico::utilities::meshes::Wavefront<Float> Mesh;
   typedef calico::math::PluckerContainmentTest<Float, Mesh> Containment;
   // typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
   typedef calico::accelerator::BruteForce<Float, Mesh, Containment> Accelerator;
 
-  Mesh plate;
+  std::stringstream plate_string;
+  plate_string << "v -1 -1  3\n"
+               << "v  1 -1  3\n"
+               << "v  1  1  3\n"
+               << "v -1  1  3\n"
+               << "\n"
+               << "f  1 2 3 4\n";
+
+  Mesh plate(plate_string);
   Accelerator accelerator(plate);
 
   auto tracer = calico::make_tracer<Float>(plate, accelerator);
 
+  Mesh::FaceId face_id[1] = {Mesh::ray_miss_id_c};
   Float start_x[1]     = {0.};
   Float start_y[1]     = {0.};
   Float start_z[1]     = {10.};
@@ -52,11 +61,11 @@ int main(int argc, const char *argv[]) {
   Float direction_y[1] = {0.};
   Float direction_z[1] = {-1.};
   auto rays = 
-    calico::input::make_soa_input<Float>(1, start_x, start_y, start_z,
+    calico::input::make_soa_input<Float, Mesh::FaceId>(1, face_id, 
+                                         start_x, start_y, start_z,
                                          direction_x, direction_y, direction_z);
 
 
-  Mesh::FaceId face_id[1] = {0};
   Float t[1]              = {-1000.};
   Float hit_x[1]          = {-1000.};
   Float hit_y[1]          = {-1000.};

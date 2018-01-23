@@ -118,7 +118,7 @@ bool unsafe_intersects(
         const Float min_x,                   const Float min_y,                   const Float min_z, 
         const Float max_x,                   const Float max_y,                   const Float max_z)
 {
-    // This implementation was informed by the post at 
+    // This implementation was informed by the post by Tavian Barnes at 
     // https://tavianator.com/fast-branchless-raybounding-box-intersections/,
     // but is an independent implementation of that algorithm.
     Float min_t = interface::min_infinity();
@@ -144,6 +144,76 @@ bool unsafe_intersects(
 
     return max_t > interface::max(min_t, 0.0) || max_t == Float(0.);
 }
+
+
+template <typename Float, typename interface=StdTypeInterface<Float>>
+bool traverse_ize(
+        const Float ray_start_x,             const Float ray_start_y,             const Float ray_start_z,
+        const Float ray_direction_x,         const Float ray_direction_y,         const Float ray_direction_z,
+        const Float min_x,                   const Float min_y,                   const Float min_z, 
+        const Float max_x,                   const Float max_y,                   const Float max_z)
+{
+  Float inverse_ray_direction_x = Float(1) / ray_direction_x;
+  Float inverse_ray_direction_y = Float(1) / ray_direction_y;
+  Float inverse_ray_direction_z = Float(1) / ray_direction_z;
+
+  Float inverse_ray_pad_x = add_ulp_magnitude(inverse_ray_direction_x, 2);
+  Float inverse_ray_pad_y = add_ulp_magnitude(inverse_ray_direction_y, 2);
+  Float inverse_ray_pad_z = add_ulp_magnitude(inverse_ray_direction_z, 2);
+
+  int sign_x = inverse_ray_direction_x < 0;
+  int sign_y = inverse_ray_direction_y < 0;
+  int sign_z = inverse_ray_direction_z < 0;
+
+  return intersects_ize(
+      ray_start_x,             ray_start_y,             ray_start_z,
+      inverse_ray_direction_x, inverse_ray_direction_y, inverse_ray_direction_z,
+      inverse_ray_pad_x,       inverse_ray_pad_y,       inverse_ray_pad_z,
+      sign_x,                  sign_y,                  sign_z,              
+      min_x,                   min_y,                   min_z,
+      max_x,                   max_y,                   max_z
+      );
+
+  // Float b_x     = ray_start_x * inverse_ray_direction_x;
+  // Float b_pad_x = ray_start_x * inverse_ray_pad_x;
+}
+
+
+
+/**
+    Find the intersection of a ray and an axis-aligned bounding box. This
+    returns the part of the ray that lies within the bounding box in the
+    near/far values. Based on the algorithm in (Ize 2013).
+
+    Ize, Thiago. "Robust BVH ray traversal." Journal of Computer Graphics
+                 Techniques (JCGT) 2.2 (2013): 12-27.
+
+    @param 
+*/
+template <typename Float, typename interface=StdTypeInterface<Float>>
+bool intersects_ize(
+        const Float ray_start_x,             const Float ray_start_y,             const Float ray_start_z,
+        const Float inverse_ray_direction_x, const Float inverse_ray_direction_y, const Float inverse_ray_direction_z,
+        const Float inverse_ray_pad_x,       const Float inverse_ray_pad_y,       const Float inverse_ray_pad_z,
+        const int sign_x,                    const int sign_y,                    const int sign_z, 
+        const Float min_x,                   const Float min_y,                   const Float min_z, 
+        const Float max_x,                   const Float max_y,                   const Float max_z)
+{
+  // See http://jcgt.org/published/0002/02/02/paper.pdf
+  Float min_t_x, max_t_x, min_t_y, max_t_y, min_t_z, max_t_z;
+  if (sign_x) {
+    min_t_x = (min_x - ray_start_x) * inverse_ray_direction_x;
+    max_t_x = (max_x - ray_start_x) * inverse_ray_pad_x;
+  }
+  else {
+    min_t_x = (max_x - ray_start_x) * inverse_ray_direction_x;
+    max_t_x = (min_x - ray_start_x) * inverse_ray_pad_x;
+  }
+
+}
+
+
+
 
 template <typename Float>
 class BoundingBoxes {

@@ -46,21 +46,53 @@ class BruteForce {
 public:
     BruteForce(const Mesh &mesh) : _mesh(mesh) {}
 
-    // TODO: This routine forces an outer loop over rays. It might be faster to
-    //       have an inner loop over rays for each triangle being considered.
+    /**
+        Find the intersection of the provided ray and a face in the assigned
+        Mesh object by performing an intersection test against all faces in
+        Mesh.
+
+        If an intersection is found, then t, face and hit_{x,y,z} will all be
+        set according to the intsection. Ray misses are denoted by setting face
+        to Mesh::ray_miss_id_c. If face is not equal to Mesh::ray_miss_id_c,
+        then an intersection was found. If face is equal to Mesh::ray_miss_id_c, 
+        then t, hit_x, hit_y, and hit_z are undefined on output.
+
+        @param start_x      X-component of the ray's start position (input)
+        @param start_y      Y-component of the ray's start position (input)
+        @param start_z      Z-component of the ray's start position (input)
+        @param direction_x  X-component of the ray's unit direction (input)
+        @param direction_y  Y-component of the ray's unit direction (input)
+        @param direction_z  Z-component of the ray's unit direction (input)
+        @param face         Face for which intersection testing will be skipped 
+                            (input)
+
+        @param face         Id of the face on which the closest intersection
+                            was discovered (output)
+        @param t            Distance along the path that the intersection 
+                            is found (output)
+        @param hit_x        X-component of the ray intersection (output)
+        @param hit_y        Y-component of the ray intersection (output)
+        @param hit_z        Z-component of the ray intersection (output)
+    */
     void find_intersection(const Float start_x, 
                            const Float start_y, 
                            const Float start_z,
                            const Float direction_x, 
                            const Float direction_y, 
                            const Float direction_z,
-                           Float &t, typename Mesh::FaceId &face,
+                           typename Mesh::FaceId &face, Float &t, 
                            Float &hit_x, Float &hit_y, Float &hit_z)
     {
+        typename Mesh::FaceId ignore_face = face;
         face = Mesh::ray_miss_id_c;
         t    = limits::infinity();
 
         for (typename Mesh::FaceId f = 0u; f < _mesh.size(); ++f) {
+
+            if (f == ignore_face) {
+                continue;
+            }
+
             // If the ray lies in the plane, this should return Inf as the
             // intersection distance.  That will get filtered out in the
             // following tests.

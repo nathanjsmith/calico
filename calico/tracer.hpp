@@ -47,22 +47,39 @@ public:
         Rays are provided to the trace_rays routine in an array-like interface
         InputArray.  This interface is required to provide seven accessor methods:
 
-          - size_t size()                    // number of rays to trace
-          - Float  start_x(size_t index)     // start point of ray
-          - Float  start_y(size_t index)
-          - Float  start_z(size_t index)
-          - Float  direction_x(size_t index) // (unit) direction of ray
-          - Float  direction_y(size_t index)
-          - Float  direction_z(size_t index)
+          - InputArray::RayId size()                    // number of rays to trace
+          - InputArray::RayId start_face(size_t index)  // face from which the ray 
+                                                        // is being launched, or
+                                                        // Mesh::ray_miss_id_c
+          - Float             start_x(size_t index)     // start point of ray
+          - Float             start_y(size_t index)
+          - Float             start_z(size_t index)
+          - Float             direction_x(size_t index) // (unit) direction of ray
+          - Float             direction_y(size_t index)
+          - Float             direction_z(size_t index)
 
         The Float routines must return a floating-point value of any precision
-        so long as it is consistent.
+        so long as it is consistent. The RayId routines must return a value of
+        InputArray::RayId.
+
+        If InputArray::start_face(size_t index) returns a value other than
+        MeshAdapter::ray_miss_id_c, then the face with the returned Id will
+        *not* be considered for intersection tests. This allows the user to
+        easily launch a ray from the surface of a face (e.g. in transmission
+        or reflection calculations) without concern for whether the ray is
+        numerically beyond the face. If all faces are hit candidates, then
+        InputArray::start_face(size_t) should return MeshAdapter::ray_miss_id_c.
 
         The ResultArray must provide just a single method named set_result that
-        has the signature
+        has the signature:
 
             set_hit(MeshAdapter::FaceId face, Real t, 
                     Real hit_x, Real hit_y, Real hit_z);
+
+        where face is the face struck by the ray (or MeshAdapter::ray_miss_id_c
+        if it did not hit any face), t is the distance along the ray that the
+        intersection occured (e.g. hit = start + direction * t), and
+        hit_{x,y,z} are the x, y and z components of the intersection position.
     */
     template <typename InputArray, typename ResultArray>
     void trace_rays(const InputArray &input, ResultArray &result)
@@ -73,7 +90,7 @@ public:
         Float t(0.), hit_x(0.), hit_y(0.), hit_z(0.);
         for (std::size_t i = 0u; i < ray_count; ++i) 
         {
-            typename MeshAdapter::FaceId face(MeshAdapter::ray_miss_id_c);
+            typename MeshAdapter::FaceId face(input.start_face(i));
 
             _accelerator.find_intersection(input.start_x(i),
                                            input.start_y(i),
@@ -81,8 +98,8 @@ public:
                                            input.direction_x(i),
                                            input.direction_y(i),
                                            input.direction_z(i),
-                                           t,
-                                           face, hit_x, hit_y, hit_z);
+                                           face, t,
+                                           hit_x, hit_y, hit_z);
             result.set_hit(i, face, t, hit_x, hit_y, hit_z);
         }// end loop over rays
     }

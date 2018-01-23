@@ -44,14 +44,15 @@ namespace input {
     are cast to when accessed.  This should provide a real-number type (such as
     float or double) and should match the type expected by the tracer.
 */
-template <typename Float, typename Array>
+template <typename Float, typename FaceId, typename FloatArray, typename FaceIdArray>
 class SoaInput {
 public:
     typedef std::size_t RayId;
 
-    SoaInput(RayId size, Array &start_x, Array &start_y, Array &start_z,
-             Array &direction_x, Array &direction_y, Array &direction_z)
-        : _size(size), 
+    SoaInput(RayId size, FaceIdArray &miss_id, 
+             FloatArray &start_x, FloatArray &start_y, FloatArray &start_z,
+             FloatArray &direction_x, FloatArray &direction_y, FloatArray &direction_z)
+        : _size(size), _start_face(miss_id),
           _start_x(start_x), _start_y(start_y), _start_z(start_z),
           _direction_x(direction_x), _direction_y(direction_y), 
           _direction_z(direction_z)
@@ -59,6 +60,8 @@ public:
     }
 
     RayId size() const {return _size;}
+
+    FaceId start_face(RayId index) const {return _start_face[index];}
 
     Float start_x(RayId index) const {return _start_x[index];}
     Float start_y(RayId indey) const {return _start_y[indey];}
@@ -70,26 +73,43 @@ public:
 
 private:
     RayId  _size;
+    FaceIdArray &_start_face;
 
-    Array &_start_x;
-    Array &_start_y;
-    Array &_start_z;
+    FloatArray &_start_x;
+    FloatArray &_start_y;
+    FloatArray &_start_z;
 
-    Array &_direction_x;
-    Array &_direction_y;
-    Array &_direction_z;
+    FloatArray &_direction_x;
+    FloatArray &_direction_y;
+    FloatArray &_direction_z;
 };
 //=============================================================================
 
 
-template <typename Float, typename Array>
-SoaInput<Float, Array> 
-  make_soa_input(typename SoaInput<Float, Array>::RayId size,
-                 Array &start_x, Array &start_y, Array &start_z,
-                 Array &direction_x, Array &direction_y, Array &direction_z)
+/**
+    Helper function to create a SoA input object. This routine can typically be
+    called with fewer template arguments than trying to instantiate the
+    SoaInput class directly. Typically, the only required arguments are Float
+    and FaceId. For example, one can construct a set of arrays and allow the
+    compiler to implicitly expand the template arguments for them:
+
+    int face_ids[] = {1};
+    float start_x[] = {0};
+    float start_y[] = {0};
+    ...
+    auto input = make_soa_input<float, int>(1, face_ids, start_x, start_y, start_z,
+                                            direction_x, direction_y, direction_z);
+*/
+template <typename Float, typename FaceId, typename FloatArray, typename FaceIdArray>
+SoaInput<Float, FaceId, FloatArray, FaceIdArray> 
+  make_soa_input(typename SoaInput<Float, FaceId, FloatArray, FaceIdArray>::RayId size,
+                 FaceIdArray &start_face,
+                 FloatArray &start_x, FloatArray &start_y, FloatArray &start_z,
+                 FloatArray &direction_x, FloatArray &direction_y, FloatArray &direction_z)
 {
-  return SoaInput<Float, Array>(size, start_x, start_y, start_z,
-                                direction_x, direction_y, direction_z);
+  return SoaInput<Float, FaceId, FloatArray, FaceIdArray>
+                    (size, start_face, start_x, start_y, start_z,
+                     direction_x, direction_y, direction_z);
 }
 //=============================================================================
 
