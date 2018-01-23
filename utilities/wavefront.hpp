@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Nathan Smith <nathanjsmith@gmail.com>
+// Copyright (c) 2017-2018, Nathan Smith <nathanjsmith@gmail.com>
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without
@@ -22,8 +22,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#ifndef __CALICO__CANNED_MESHES__PLATE__HPP__
-#define __CALICO__CANNED_MESHES__PLATE__HPP__
+#ifndef __CALICO__UTILITIES__MESHES__WAVEFRONT__HPP__
+#define __CALICO__UTILITIES__MESHES__WAVEFRONT__HPP__
 
 #include <calico/math.hpp>
 
@@ -51,32 +51,25 @@ template <typename String>
 String trim(const String &input) {
     size_t start = input.find_first_not_of(" \t");
     size_t stop = input.find_last_not_of(" \t\n\r");
-    return input.substr(start, stop-start);
+    if (stop - start) {
+      return input.substr(start, stop-start+1);
+    }
+    return input;
 }
 
 
-// /// Split a string on a delimiter
-// template <typename String>
-// std::vector<String> split(const String &input, const String &delimiters) {
-//     std::vector<String> parts;
-//     size_t pos = 0;
-//     while (true) {
-//         size_t start = input.find_first_not_of(delimiters, pos);
-//         if (start == std::string::npos) {
-//             break;
-//         }
-//         size_t stop = input.find_first_not_of(delimiters, symbol_begin);
-//         if (stop == std::string::npos) {
-//             stop = input.length();
-//         }
-//         parts.push_back(input.substr(start, stop - start));
-//     }
-//     return parts;
-// }
-
 /**
     This Wavefront OBJ loader follows the interface requirements of the Mesh
-    adapter.
+    adapter. 
+    
+    This simplistic loader is not general purpose as it does not handle
+    anything with regards to objects or groups and ignores normals specified in
+    the mesh file (both on the face and on vertices). The whole mesh is loaded
+    into a single object and exposed through the standard Mesh interface. It
+    automatically computes surface normals and surface area of all facets
+    loaded. It also splits Quad elements into a pair of Tri-elements. Finally,
+    it internally uses 0 based vertex counting, so converts Wavefront OBJ's 1
+    based counting to 0 based during the load process.
 */
 template <typename Float>
 class Wavefront {
@@ -86,7 +79,7 @@ public:
     
     static const FaceId ray_miss_id_c = -1;
 
-    Wavefront(std::istream input_stream) {
+    Wavefront(std::istream &input_stream) {
 
         std::size_t line_number(0u);
         while (input_stream.good()) {
@@ -131,9 +124,9 @@ public:
             }
             else if (line.substr(0,2) == "f ") {
                 std::string face_indices = line.substr(1);
-                int a,b,c,d;
-                std::size_t offset(0), j(0);
-                bool is_quad = false;
+                int a{},b{},c{},d{};
+                std::size_t offset{0}, j{0};
+                bool is_quad{false};
                 try {
                     a = std::stoi(face_indices, &j);
                     offset += j;
@@ -206,6 +199,8 @@ public:
         _normal_x.resize(_count);
         _normal_y.resize(_count);
         _normal_z.resize(_count);
+        _d.resize(_count);
+        _area.resize(_count);
 
         for (FaceId i = 0u; i < _count; ++i) {
             // Automatically compute the normal and d for the triangle
