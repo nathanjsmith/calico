@@ -28,14 +28,14 @@
 #include <calico/result/soa_result.hpp>
 #include <calico/accelerator/brute_force.hpp>
 
-#include <canned_meshes/plate.hpp>
+#include <calico/utilities/meshes/plate.hpp>
 
 #include <iostream>
 
 int main(int argc, const char *argv[]) {
 
   typedef double Float;
-  typedef calico::canned_meshes::Plate<Float> Mesh;
+  typedef calico::utilities::meshes::Plate<Float> Mesh;
   typedef calico::math::PluckerContainmentTest<Float, Mesh> Containment;
   // typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
   typedef calico::accelerator::BruteForce<Float, Mesh, Containment> Accelerator;
@@ -43,9 +43,9 @@ int main(int argc, const char *argv[]) {
   Mesh plate;
   Accelerator accelerator(plate);
 
-  auto tracer = calico::make_tracer<Float>(plate, accelerator);
+  auto tracer = calico::make_tracer(accelerator);
 
-  Mesh::FaceId face_id[1] = {Mesh::ray_miss_id_c};
+  Mesh::FaceId start_face_id[1] = {Mesh::ray_miss_id_c};
   Float start_x[1]     = {0.};
   Float start_y[1]     = {0.};
   Float start_z[1]     = {10.};
@@ -54,23 +54,24 @@ int main(int argc, const char *argv[]) {
   Float direction_z[1] = {-1.};
   auto rays = 
     calico::input::make_soa_input<Float, Mesh::FaceId>
-            (1, face_id, 
+            (1, start_face_id, 
              start_x, start_y, start_z,
              direction_x, direction_y, direction_z);
 
 
-  Float t[1]              = {-1000.};
-  Float hit_x[1]          = {-1000.};
-  Float hit_y[1]          = {-1000.};
-  Float hit_z[1]          = {-1000.};
+  Mesh::FaceId strike_face_id[1] = {Mesh::ray_miss_id_c};
+  Float t[1]                     = {-1000.};
+  Float hit_x[1]                 = {-1000.};
+  Float hit_y[1]                 = {-1000.};
+  Float hit_z[1]                 = {-1000.};
   auto results = 
-    calico::result::make_soa_result<Float, std::size_t>(face_id, t, hit_x, hit_y, hit_z);
+    calico::result::make_soa_result<Float, std::size_t>(strike_face_id, t, hit_x, hit_y, hit_z);
 
 
   tracer.trace_rays(rays, results);
 
 
-  std::cerr << "Hit facet " << face_id[0] << " at (" 
+  std::cerr << "Hit facet " << strike_face_id[0] << " at (" 
             << hit_x[0] << ", " << hit_y[0] << ", " << hit_z[0] 
             << ")" << std::endl;
 

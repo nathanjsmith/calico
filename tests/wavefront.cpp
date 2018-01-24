@@ -27,8 +27,7 @@
 #include <calico/input/soa_input.hpp>
 #include <calico/result/soa_result.hpp>
 #include <calico/accelerator/brute_force.hpp>
-
-#include <utilities/wavefront.hpp>
+#include <calico/utilities/meshes/wavefront.hpp>
 
 #include <iostream>
 

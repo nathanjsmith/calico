@@ -119,6 +119,15 @@ Tracer<Float, MeshAdapter, Accelerator>
   }
 
 
+template <typename Accelerator>
+Tracer<typename Accelerator::FloatType, typename Accelerator::MeshType, Accelerator>
+  make_tracer(Accelerator &accelerator) {
+    return Tracer<typename Accelerator::FloatType, 
+                  typename Accelerator::MeshType, 
+                  Accelerator>(accelerator);
+  }
+
+
 }// end namespace calico
 
 #endif

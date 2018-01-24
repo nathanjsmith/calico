@@ -44,6 +44,10 @@ template <typename Float,
           typename limits=std::numeric_limits<Float> >
 class BruteForce {
 public:
+    typedef Float       FloatType;
+    typedef Mesh        MeshType;
+    typedef Containment ContainmentType;
+
     BruteForce(const Mesh &mesh) : _mesh(mesh) {}
 
     /**

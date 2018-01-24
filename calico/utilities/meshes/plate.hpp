@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Nathan Smith <nathanjsmith@gmail.com>
+// Copyright (c) 2014-2018, Nathan Smith <nathanjsmith@gmail.com>
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without
@@ -22,14 +22,15 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#ifndef __CALICO__CANNED_MESHES__PLATE__HPP__
-#define __CALICO__CANNED_MESHES__PLATE__HPP__
+#ifndef __CALICO__UTILITIES__MESHES__PLATE__HPP__
+#define __CALICO__UTILITIES__MESHES__PLATE__HPP__
 
 #include <vector>
 #include <iostream>
 
 namespace calico {
-namespace canned_meshes {
+namespace utilities {
+namespace meshes {
 
 /**
     This Plate follows the interface requirements of the Mesh adapter.  It
@@ -174,7 +175,8 @@ private:
 };
 //=============================================================================
 
-}// end canned_meshes
+}// end calico::utilities::meshes
+}// end calico::utilities
 }// end calico
 
 #endif
