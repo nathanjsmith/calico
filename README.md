@@ -1,4 +1,4 @@
-alico
+Calico
 ------
 
 **Calico is under development and does not currently function.**
