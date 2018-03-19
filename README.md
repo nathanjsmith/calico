@@ -1,8 +1,6 @@
 Calico
 ------
 
-**Calico is under development and does not currently function.**
-
 Calico is a ray/geometry intersection library for building ray-traced applications.  Its focus is on presenting an API that works with your existing datastructures through use of the [adapter design pattern](http://sourcemaking.com/design_patterns/adapter). Because it is implemented using templates, Calico is a header-only library with nothing to compile. You may include Calico in your project by adding it to your include path, and including its headers.
 
 Calico is a ray-casting engine, which can be used to build a ray-tracer. For example, it focuses on answering the question of "what surfaces did this ray hit?".  It does not provide reflection or transmission calculations, lighting calculations, etc.  The physics simulation is left to the implementer as they are the pieces that are application specific.
@@ -151,6 +149,26 @@ All usages of Calico will involve defining an adapter to your mesh data structur
 
   `FaceId size() const`
    Number of triangles in the mesh.
+
+Plan
+====
+
+**Calico is under development and does not currently function, except in the most basic manner.**
+
+[X] Design mesh adapter interface
+[X] Design ray adapter interface
+  [X] Provide helper adapter for structure-of-arrays ray inputs
+[X] Implement a math library to support ray-tracing routines
+[X] Implement ray/bounding-box intersection routines
+  [ ] Provide unit tests verifying ray/bounding-box intersection routines work in a variety of cases
+[X] Write ray/triangle intersection routines in an abstract manner
+  [ ] Write ray/triangle intersection unit tests to verify routines work in a variety of cases
+[ ] Design acceleration structure interface
+  [X] Implement brute-force acceleration structure that checks each ray against all triangles; complexity is O(n)
+    [ ] Write unit tests to verify acceleration structure works in a variety of cases
+  [ ] Implement bounding-volume-hierarchy acceleration structure to speed ray/triangle checks; complexity is O(log(n))
+    [ ] Write unit tests to verify acceleration structure works in a variety of cases
+[ ] Write demonstration image rendering application using framework to render Wavefront OBJ meshes
 
 License
 =======
