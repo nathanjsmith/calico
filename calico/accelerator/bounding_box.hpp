@@ -54,9 +54,9 @@ struct StdTypeInterface {
     return std::numeric_limits<Float>::infinity();
   }
   
-  inline static Float min(Float a, Float b) {return std::min(a,b);}
+  inline static Float min(Float a, Float b) {std::min(a, b);}
   
-  inline static Float max(Float a, Float b) {return std::max(a,b);}
+  inline static Float max(Float a, Float b) {std::max(a, b);}
 };
 //=============================================================================
 
@@ -168,18 +168,6 @@ bool unsafe_intersects(
 
 
 template <typename Float>
-Float min(const Float &left, const Float &right) {
-    return (left < right ? left : right);
-}
-
-
-template <typename Float>
-Float max(const Float &left, const Float &right) {
-    return (left > right ? left : right);
-}
-
-
-template <typename Float>
 constexpr Float ize_scalar();
 
 template <>
@@ -214,17 +202,35 @@ bool intersect_ize(
         const Float max_x,                   const Float max_y,                   const Float max_z,
         Float &min_t, Float &max_t)
 {
-    Float min_x_t = (ray_start_x <  Float(0) ? min_x : max_x) * inverse_ray_direction_x;
-    Float max_x_t = (ray_start_x <= Float(0) ? max_x : min_x) * inverse_ray_direction_x;
-                
-    Float min_y_t = (ray_start_y <  Float(0) ? min_y : max_y) * inverse_ray_direction_y;
-    Float max_y_t = (ray_start_y <= Float(0) ? max_y : min_y) * inverse_ray_direction_y;
-                
-    Float min_z_t = (ray_start_z <  Float(0) ? min_z : max_z) * inverse_ray_direction_z;
-    Float max_z_t = (ray_start_z <= Float(0) ? max_z : min_z) * inverse_ray_direction_z;
+    min_t = 0.;
 
-    min_t = max(min_z_t, max(min_y_t, max(min_x_t, min_t)));
-    max_t = min(max_z_t, min(max_y_t, min(max_x_t, max_t))) * ize_scalar<Float>();
+    // This implementation requires that min(a,b) return b if a is NaN. We can
+    // accomplish that using a ternary operator, but std::min or some other min
+    // may not behave that way. See the Ize paper for details. In IEEE 754,
+    // comparing a number with NaN will yield false (unless the comparison is
+    // !=, which none of the below are), so the right-hand value will always be
+    // returned in these min/max calculations.
+    struct nan_safe {
+        static inline Float min(const Float &left, const Float &right) {
+            return (left < right ? left : right);
+        }
+    
+        static inline float max(const float &left, const float &right) {
+            return (left > right ? left : right);
+        }
+    };
+
+    const Float min_x_t = ((ray_direction_x < Float(0) ? max_x : min_x) - ray_start_x) * inverse_ray_direction_x;
+    const Float max_x_t = ((ray_direction_x < Float(0) ? min_x : max_x) - ray_start_x) * inverse_ray_direction_x;
+
+    const Float min_y_t = ((ray_direction_y < Float(0) ? max_y : min_y) - ray_start_y) * inverse_ray_direction_y;
+    const Float max_y_t = ((ray_direction_y < Float(0) ? min_y : max_y) - ray_start_y) * inverse_ray_direction_y;
+
+    const Float min_z_t = ((ray_direction_z < Float(0) ? max_z : min_z) - ray_start_z) * inverse_ray_direction_z;
+    const Float max_z_t = ((ray_direction_z < Float(0) ? min_z : max_z) - ray_start_z) * inverse_ray_direction_z;
+
+    min_t = nan_safe::max(min_z_t, nan_safe::max(min_y_t, nan_safe::max(min_x_t, min_t)));
+    max_t = nan_safe::min(max_z_t, nan_safe::min(max_y_t, nan_safe::min(max_x_t, max_t))) * ize_scalar<Float>();
 
     return min_t <= max_t;
 }

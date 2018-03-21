@@ -115,17 +115,18 @@ BOOST_AUTO_TEST_CASE(compare_safe_and_unsafe_intersection_routines) {
     for (size_t j = 0u; j < aabb_count; ++j) {
       for (size_t i = 0u; i < ray_count; ++i) {
 
-        Float min_t = calico::accelerator::StdTypeInterface<Float>::max_infinity();
-        Float max_t = calico::accelerator::StdTypeInterface<Float>::min_infinity();
+        Float min_t{0};
+        Float max_t{calico::accelerator::StdTypeInterface<Float>::max_infinity()};
         bool safe = 
-          calico::accelerator::intersects(start_x[i], start_y[i], start_z[i],
+          calico::accelerator::intersect_ize(start_x[i], start_y[i], start_z[i],
                                           direction_x[i], direction_y[i], direction_z[i],
+                                          inverse_direction_x[i], inverse_direction_y[i], inverse_direction_z[i],
                                           min_x[0], min_y[0], min_z[0],
                                           max_x[0], max_y[0], max_z[0],
                                           min_t, max_t);
 
-        min_t = calico::accelerator::StdTypeInterface<Float>::max_infinity();
-        max_t = calico::accelerator::StdTypeInterface<Float>::min_infinity();
+        min_t = Float(0);
+        max_t = calico::accelerator::StdTypeInterface<Float>::max_infinity();
         bool unsafe = 
           calico::accelerator::unsafe_intersects(
                                           start_x[i], start_y[i], start_z[i],
@@ -151,7 +152,7 @@ BOOST_AUTO_TEST_CASE(compare_safe_and_unsafe_intersection_routines) {
 //=============================================================================
 
 
-BOOST_AUTO_TEST_CASE(misses) {
+BOOST_AUTO_TEST_CASE(hard_coded_cases) {
   typedef double Float;
 
   const size_t ray_count(6);
@@ -227,7 +228,8 @@ BOOST_AUTO_TEST_CASE(misses) {
     // normalize the direction
     calico::math::normalize(direction_x[i], direction_y[i], direction_z[i]);
 
-    // pre-compute the inverse of the direction
+    // pre-compute the inverse of the direction -- internals of intersect_ize
+    // should be robust to divide-by-zero
     inverse_direction_x[i] = Float(1) / direction_x[i];
     inverse_direction_y[i] = Float(1) / direction_y[i];
     inverse_direction_z[i] = Float(1) / direction_z[i];
@@ -244,39 +246,29 @@ BOOST_AUTO_TEST_CASE(misses) {
 
   const size_t j(0);
   for (size_t i = 0u; i < ray_count; ++i) {
-    Float min_t = calico::accelerator::StdTypeInterface<Float>::max_infinity();
-    Float max_t = calico::accelerator::StdTypeInterface<Float>::min_infinity();
+    Float min_t{0};
+    Float max_t = calico::accelerator::StdTypeInterface<Float>::max_infinity();
     bool safe = 
-      calico::accelerator::intersects(start_x[i], start_y[i], start_z[i],
-                                      direction_x[i], direction_y[i], direction_z[i],
-                                      min_x[0], min_y[0], min_z[0],
-                                      max_x[0], max_y[0], max_z[0],
-                                      min_t, max_t);
+      calico::accelerator::intersect_ize(start_x[i], start_y[i], start_z[i],
+                                         direction_x[i], direction_y[i], direction_z[i],
+                                         inverse_direction_x[i], 
+                                         inverse_direction_y[i], 
+                                         inverse_direction_z[i],
+                                         min_x[0], min_y[0], min_z[0],
+                                         max_x[0], max_y[0], max_z[0],
+                                         min_t, max_t);
 
-    min_t = calico::accelerator::StdTypeInterface<Float>::max_infinity();
-    max_t = calico::accelerator::StdTypeInterface<Float>::min_infinity();
-    bool unsafe = 
-      calico::accelerator::unsafe_intersects(
-                                      start_x[i], start_y[i], start_z[i],
-                                      inverse_direction_x[i], inverse_direction_y[i], inverse_direction_z[i],
-                                      min_x[0], min_y[0], min_z[0],
-                                      max_x[0], max_y[0], max_z[0],
-                                      min_t, max_t);
-    if (safe != unsafe) {
-        std::cerr << "Ray (" << start_x[i] << ", " << start_y[i] << ", " << start_z[i] << ") -> ("
-                             << direction_x[i] << ", " << direction_y[i] << ", " << direction_z[i] << ") "
-                  << "intersecting AABB [(" << min_x[j] << ", " << min_y[j] << ", " << min_z[j] << "), ("
-                  << max_x[j] << ", " << max_y[j] << ", " << max_z[j] << ")] disagreed between safe and "
-                  << "unsafe implementations (" << safe << " vs " << unsafe << ")" << std::endl;
-    }
-    if (expected[i] != safe) {
-        std::cerr << "Error: We expected that ray "
-                  << "(" << start_x[i] << ", " << start_y[i] << ", " << start_z[i] << ") -> "
-                  << "(" << direction_x[i] << ", " << direction_y[i] << ", " << direction_z[i] << ") "
-                  << "would hit the bounding box, but it missed" << std::endl;
+    if (safe != expected[i]) {
+        std::cerr << "Error: We expected that ray " << i << " would "
+                  << (expected[i] ? "hit" : "miss") << " the bounding "
+                  << "box, but it didn't." << std::endl;
+        std::cerr << "Ray (" << start_x[i] << ", " << start_y[i] << ", " << start_z[i] << ")\n"
+                  << "    (" << direction_x[i] << ", " << direction_y[i] << ", " << direction_z[i] << ")\n"
+                  << "AABB [(" << min_x[j] << ", " << min_y[j] << ", " << min_z[j] << "),\n"
+                  << "      (" << max_x[j] << ", " << max_y[j] << ", " << max_z[j] << ")\n"
+                  << "     ]" << std::endl;
     }
     BOOST_REQUIRE_EQUAL(expected[i], safe);
-    BOOST_REQUIRE_EQUAL(safe, unsafe);
   }
 }
 
@@ -304,22 +296,30 @@ BOOST_AUTO_TEST_CASE(axis_aligned_hits) {
   bool hit;
   for (Float direction_x : x_direction) {
     for (std::size_t i = 0u; i < 100000u; ++i) {
-      Float start_x = -direction_x * generate_backoff();
-      Float start_y = generate_slide();
-      Float start_z = generate_slide();
+      const Float start_x = -direction_x * generate_backoff();
+      const Float start_y = generate_slide();
+      const Float start_z = generate_slide();
 
-      Float direction_y{0};
-      Float direction_z{0};
+      const Float direction_y{0};
+      const Float direction_z{0};
 
-      Float min_t = calico::accelerator::StdTypeInterface<Float>::max_infinity();
-      Float max_t = calico::accelerator::StdTypeInterface<Float>::min_infinity();
+      const Float inverse_direction_x{Float(1)/direction_x};
+      const Float inverse_direction_y{Float(1)/direction_y};
+      const Float inverse_direction_z{Float(1)/direction_z};
 
-      hit = calico::accelerator::intersects(start_x, start_y, start_z,
+      Float min_t{0};
+      Float max_t{calico::accelerator::StdTypeInterface<Float>::max_infinity()};
+
+      hit = calico::accelerator::intersect_ize(start_x, start_y, start_z,
                                             direction_x, direction_y, direction_z,
+                                            inverse_direction_x, inverse_direction_y, inverse_direction_z,
                                             min_x, min_y, min_z, 
                                             max_x, max_y, max_z,
                                             min_t, max_t);
-      BOOST_REQUIRE(hit && "Failed intersection for index" && i);
+      if (!hit) {
+        std::cerr << "Ray (" << start_x << ", " << start_y << ", " << start_z << ") -> (" << direction_x << ", " << direction_y << ", " << direction_z << ") missed" << std::endl;
+      }
+      BOOST_REQUIRE(hit && "Failed intersection for index");
     }
   }
 
