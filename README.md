@@ -160,7 +160,7 @@ Plan
   - [X] Provide helper adapter for structure-of-arrays ray inputs
 - [X] Implement a math library to support ray-tracing routines
 - [X] Implement ray/bounding-box intersection routines
-  - [ ] Provide unit tests verifying ray/bounding-box intersection routines work in a variety of cases
+  - [X] Provide unit tests verifying ray/bounding-box intersection routines work in a variety of cases
 - [X] Write ray/triangle intersection routines in an abstract manner
   - [ ] Write ray/triangle intersection unit tests to verify routines work in a variety of cases
 - [ ] Design acceleration structure interface
