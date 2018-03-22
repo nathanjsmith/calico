@@ -61,12 +61,36 @@ struct StdTypeInterface {
 //=============================================================================
 
 
-/**
-    Find the intersection of a ray and an axis-aligned bounding box. This
-    returns the part of the ray that lies within the bounding box in the
-    near/far (min_t/max_t) values.
+template <typename Float>
+constexpr Float ize_scalar();
 
-    Inputs:
+template <>
+constexpr float ize_scalar<float>() {return 1.00000024f;}
+
+template <>
+constexpr double ize_scalar<double>() {return 1.0000000000000004;}
+
+/**
+    MaxMult bounding box intersection algorithm (mostly) as described in:
+
+    Ize, Thiago. "Robust BVH ray traversal." Journal of Computer Graphics
+                 Techniques (JCGT) 2.2 (2013): 12-27.
+
+    A key difference is that this does not require that the bounding box values
+    be stored in an array indexable via 0/1 (min/max). Instead, it uses ternary
+    expressions to choose between the min/max bounds. It should be nearly as
+    performant.
+
+    Also, this uses the template function ize_scalar, which is specialized on
+    the floating-point type selected. If you use a type other than float or
+    double, you must also provide a specialization of
+
+        template<>
+        YourFloat calico::accelerator::ize_scalar<YourFloat>() {return 1.;}
+
+    for your type.  An arbitrary precision type can have the specialization
+    just return 1. See the source paper for details on choosing a MaxMult
+    scalar.
 
     @param ray_start_x      Start x value for the ray (ray origin.x)
     @param ray_start_y      Start y value for the ray (ray origin.y)
@@ -92,109 +116,7 @@ struct StdTypeInterface {
                             if it does not.
 */
 template <typename Float, typename interface=StdTypeInterface<Float>>
-bool intersects(const Float ray_start_x,     const Float ray_start_y,     const Float ray_start_z,
-                const Float ray_direction_x, const Float ray_direction_y, const Float ray_direction_z,
-                const Float min_x,           const Float min_y,           const Float min_z, 
-                const Float max_x,           const Float max_y,           const Float max_z,
-                Float &min_t, Float &max_t)
-{
-    // This implementation was informed by the post at 
-    // https://tavianator.com/fast-branchless-raybounding-box-intersections/,
-    // but is an independent implementation of that algorithm.
-    if (ray_direction_x != Float(0)) {
-        const Float mn_x = (min_x - ray_start_x) / ray_direction_x;
-        const Float mx_x = (max_x - ray_start_x) / ray_direction_x;
-
-        min_t = interface::max(min_t, interface::min(mn_x, mx_x));
-        max_t = interface::min(max_t, interface::max(mn_x, mx_x));
-    }
-
-    if (ray_direction_y != Float(0)) {
-        const Float mn_y = (min_y - ray_start_y) / ray_direction_y;
-        const Float mx_y = (max_y - ray_start_y) / ray_direction_y;
-
-        min_t = interface::max(min_t, interface::min(mn_y, mx_y));
-        max_t = interface::min(max_t, interface::max(mn_y, mx_y));
-    }
-
-    if (ray_direction_z != Float(0)) {
-        const Float mn_z = (min_z - ray_start_z) / ray_direction_z;
-        const Float mx_z = (max_z - ray_start_z) / ray_direction_z;
-
-        min_t = interface::max(min_t, interface::min(mn_z, mx_z));
-        max_t = interface::min(max_t, interface::max(mn_z, mx_z));
-    }
-
-    return (max_t > min_t && max_t > Float(0.)) || max_t == Float(0.);
-}
-
-
-/**
-    Find the intersection of a ray and an axis-aligned bounding box. This
-    returns the part of the ray that lies within the bounding box in the
-    near/far values.
-*/
-template <typename Float, typename interface=StdTypeInterface<Float>>
-bool unsafe_intersects(
-        const Float ray_start_x,             const Float ray_start_y,             const Float ray_start_z,
-        const Float inverse_ray_direction_x, const Float inverse_ray_direction_y, const Float inverse_ray_direction_z,
-        const Float min_x,                   const Float min_y,                   const Float min_z, 
-        const Float max_x,                   const Float max_y,                   const Float max_z,
-        Float &min_t, Float &max_t)
-{
-    // This implementation was informed by the post by Tavian Barnes at 
-    // https://tavianator.com/fast-branchless-raybounding-box-intersections/,
-    // but is an independent implementation of that algorithm.
-    const Float mn_x = (min_x - ray_start_x) * inverse_ray_direction_x;
-    const Float mx_x = (max_x - ray_start_x) * inverse_ray_direction_x;
-
-    min_t = interface::max(min_t, interface::min(mn_x, mx_x));
-    max_t = interface::min(max_t, interface::max(mn_x, mx_x));
-
-    const Float mn_y = (min_y - ray_start_y) * inverse_ray_direction_y;
-    const Float mx_y = (max_y - ray_start_y) * inverse_ray_direction_y;
-
-    min_t = interface::max(min_t, interface::min(mn_y, mx_y));
-    max_t = interface::min(max_t, interface::max(mn_y, mx_y));
-
-    const Float mn_z = (min_z - ray_start_z) * inverse_ray_direction_z;
-    const Float mx_z = (max_z - ray_start_z) * inverse_ray_direction_z;
-
-    min_t = interface::max(min_t, interface::min(mn_z, mx_z));
-    max_t = interface::min(max_t, interface::max(mn_z, mx_z));
-
-    return max_t > interface::max(min_t, 0.0) || max_t == Float(0.);
-}
-
-
-template <typename Float>
-constexpr Float ize_scalar();
-
-template <>
-constexpr float ize_scalar<float>() {return 1.00000024f;}
-
-template <>
-constexpr double ize_scalar<double>() {return 1.0000000000000004;}
-
-/**
-    MaxMult bounding box intersection algorithm (mostly) as described in:
-
-    Ize, Thiago. "Robust BVH ray traversal." Journal of Computer Graphics
-                 Techniques (JCGT) 2.2 (2013): 12-27.
-
-    A key difference is that this does not require that the bounding box values
-    be stored in an array indexable via 0/1 (min/max). Instead, it uses ternary
-    expressions to choose between the min/max bounds. It should be nearly as
-    performant.
-
-    Also, this uses the template function ize_scalar, which is specialized on
-    the floating-point type selected. If you use a type other than float or
-    double, you must also provide a specialization of ize_scalar for your type.
-    An arbitrary precision type can have the specialization just return 1. See
-    the source paper for details on choosing a MaxMult scalar.
-*/
-template <typename Float, typename interface=StdTypeInterface<Float>>
-bool intersect_ize(
+bool intersects(
         const Float ray_start_x,             const Float ray_start_y,             const Float ray_start_z,
         const Float ray_direction_x,         const Float ray_direction_y,         const Float ray_direction_z,
         const Float inverse_ray_direction_x, const Float inverse_ray_direction_y, const Float inverse_ray_direction_z,
@@ -240,14 +162,16 @@ template <typename Float>
 class BoundingBoxes {
 public:
     BoundingBoxes() : min_x(nullptr), min_y(nullptr), min_z(nullptr),
-                      max_x(nullptr), max_y(nullptr), max_z(nullptr) {}
+                      max_x(nullptr), max_y(nullptr), max_z(nullptr),
+                      count(0u) {}
 
-    Float *min_x;
-    Float *min_y;
-    Float *min_z;
-    Float *max_x;
-    Float *max_y;
-    Float *max_z;
+    Float      *min_x;
+    Float      *min_y;
+    Float      *min_z;
+    Float      *max_x;
+    Float      *max_y;
+    Float      *max_z;
+    std::size_t count;
 };
 
 
