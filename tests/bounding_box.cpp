@@ -227,6 +227,11 @@ BOOST_AUTO_TEST_CASE(axis_aligned_hits) {
 }
 
 
+/**
+  This unit test finds a ponit on each of a bounding box's six faces and then
+  fires a ray towards that point. All of the fired rays should then have an
+  intersection with the bounding box.
+*/
 BOOST_AUTO_TEST_CASE(generalized_hits) {
   typedef double Float;
 
@@ -328,6 +333,150 @@ BOOST_AUTO_TEST_CASE(generalized_hits) {
         std::cerr << "Ray (" << start_x << ", " << start_y << ", " << start_z << ") -> (" << direction_x << ", " << direction_y << ", " << direction_z << ") missed" << std::endl;
       }
       BOOST_REQUIRE(hit && "Failed intersection for index");
+    }
+  }
+
+}
+
+
+
+/**
+  Generates points that lie above, to the side-of, or below the bounding box,
+  fires a ray towards those points, and verifies that they missed.
+*/
+BOOST_AUTO_TEST_CASE(generalized_misses) {
+  typedef double Float;
+
+  std::mt19937 rng;
+  std::uniform_real_distribution<Float> uniform_before(-1., -2.);
+  std::uniform_real_distribution<Float> uniform_within( 0.,  1.);
+  std::uniform_real_distribution<Float> uniform_beyond( 1.,  2.);
+  std::uniform_real_distribution<Float> uniform_scalar(-1., 1.);
+  auto generate_source_position = std::bind(uniform_scalar, rng);
+
+  const Float min_x{-1};
+  const Float min_y{-1};
+  const Float min_z{-1};
+
+  const Float max_x{1};
+  const Float max_y{1};
+  const Float max_z{1};
+  
+  // Try rays in the x-axis
+  const std::size_t sides[] = {0, 1, 2, 3, 4, 5};
+  const std::size_t above_below_left_right[] = {0, 1, 2, 3};
+
+  for (const std::size_t side : sides) {
+    for (const std::size_t ablr : above_below_left_right) {
+      std::uniform_real_distribution<Float> *u_generator;
+      std::uniform_real_distribution<Float> *v_generator;
+      if (ablr == 0u) {
+        // above
+        u_generator = &uniform_within;
+        v_generator = &uniform_beyond;
+      }
+      else if (ablr == 1u) {
+        // left
+        u_generator = &uniform_before;
+        v_generator = &uniform_within;
+      }
+      else if (ablr == 2u) {
+        // right
+        u_generator = &uniform_beyond;
+        v_generator = &uniform_within;
+      }
+      else {
+        // below
+        u_generator = &uniform_within;
+        v_generator = &uniform_before;
+      }
+
+      for (std::size_t i = 0u; i < 10000u; ++i) {
+        // Generate a point on the surface of this side. We'll fire a ray towards
+        // that point.
+        Float target_u = (*u_generator)(rng);
+        Float target_v = (*v_generator)(rng);
+
+        Float target_x,target_y,target_z,start_x,start_y,start_z;
+        if (side == 0) {
+          target_x = 1.;
+          target_y = target_u;
+          target_z = target_v;
+          start_x = target_x + 1 + generate_source_position();
+          start_y = generate_source_position();
+          start_z = generate_source_position();
+        }
+        else if (side == 1) {
+          target_x = -1.;
+          target_y = target_u;
+          target_z = target_v;
+          start_x = target_x - 1 - generate_source_position();
+          start_y = generate_source_position();
+          start_z = generate_source_position();
+        }
+        else if (side == 2) {
+          target_x = target_u;
+          target_y = 1;
+          target_z = target_v;
+          start_x = generate_source_position();
+          start_y = target_y + 1 + generate_source_position();
+          start_z = generate_source_position();
+        }
+        else if (side == 3) {
+          target_x = target_u;
+          target_y = -1;
+          target_z = target_v;
+          start_x = generate_source_position();
+          start_y = target_y - 1 - generate_source_position();
+          start_z = generate_source_position();
+        }
+        else if (side == 4) {
+          target_x = target_u;
+          target_y = target_v;
+          target_z = 1;
+          start_x = generate_source_position();
+          start_y = generate_source_position();
+          start_z = target_z + 1 + generate_source_position();
+        }
+        else {
+          target_x = target_u;
+          target_y = target_v;
+          target_z = -1;
+          start_x = generate_source_position();
+          start_y = generate_source_position();
+          start_z = target_z - 1 - generate_source_position();
+        }
+
+        Float direction_x{target_x - start_x};
+        Float direction_y{target_y - start_y};
+        Float direction_z{target_z - start_z};
+
+        calico::math::normalize(direction_x, direction_y, direction_z);
+
+        const Float inverse_direction_x{Float(1)/direction_x};
+        const Float inverse_direction_y{Float(1)/direction_y};
+        const Float inverse_direction_z{Float(1)/direction_z};
+
+        Float min_t{0};
+        Float max_t{calico::accelerator::StdTypeInterface<Float>::max_infinity()};
+
+        bool hit =
+              calico::accelerator::intersects(start_x, start_y, start_z,
+                                              direction_x, direction_y, direction_z,
+                                              inverse_direction_x, inverse_direction_y, inverse_direction_z,
+                                              min_x, min_y, min_z, 
+                                              max_x, max_y, max_z,
+                                              min_t, max_t);
+        if (hit) {
+          std::cerr << "Ray (" << start_x << ", " << start_y << ", " << start_z << ") -> (" 
+                               << direction_x << ", " << direction_y << ", " << direction_z 
+                               << ") hit, but should have missed" << std::endl;
+          std::cerr << "Target (" << target_x << ", " << target_y << ", " << target_z << ")" << std::endl;
+          std::cerr << "Above/below/left/right == " << ablr << std::endl;
+          std::cerr << "Side: " << side << std::endl;
+        }
+        BOOST_REQUIRE(!hit && "Expected ray to miss the bounding box");
+      }
     }
   }
 
