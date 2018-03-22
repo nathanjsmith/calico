@@ -155,20 +155,20 @@ Plan
 
 **Calico is under development and does not currently function, except in the most basic manner.**
 
-[X] Design mesh adapter interface
-[X] Design ray adapter interface
-  [X] Provide helper adapter for structure-of-arrays ray inputs
-[X] Implement a math library to support ray-tracing routines
-[X] Implement ray/bounding-box intersection routines
-  [ ] Provide unit tests verifying ray/bounding-box intersection routines work in a variety of cases
-[X] Write ray/triangle intersection routines in an abstract manner
-  [ ] Write ray/triangle intersection unit tests to verify routines work in a variety of cases
-[ ] Design acceleration structure interface
-  [X] Implement brute-force acceleration structure that checks each ray against all triangles; complexity is O(n)
-    [ ] Write unit tests to verify acceleration structure works in a variety of cases
-  [ ] Implement bounding-volume-hierarchy acceleration structure to speed ray/triangle checks; complexity is O(log(n))
-    [ ] Write unit tests to verify acceleration structure works in a variety of cases
-[ ] Write demonstration image rendering application using framework to render Wavefront OBJ meshes
+- [X] Design mesh adapter interface
+- [X] Design ray adapter interface
+  - [X] Provide helper adapter for structure-of-arrays ray inputs
+- [X] Implement a math library to support ray-tracing routines
+- [X] Implement ray/bounding-box intersection routines
+  - [ ] Provide unit tests verifying ray/bounding-box intersection routines work in a variety of cases
+- [X] Write ray/triangle intersection routines in an abstract manner
+  - [ ] Write ray/triangle intersection unit tests to verify routines work in a variety of cases
+- [ ] Design acceleration structure interface
+  - [X] Implement brute-force acceleration structure that checks each ray against all triangles; complexity is O(n)
+    - [ ] Write unit tests to verify acceleration structure works in a variety of cases
+  - [ ] Implement bounding-volume-hierarchy acceleration structure to speed ray/triangle checks; complexity is O(log(n))
+    - [ ] Write unit tests to verify acceleration structure works in a variety of cases
+- [ ] Write demonstration image rendering application using framework to render Wavefront OBJ meshes
 
 License
 =======
