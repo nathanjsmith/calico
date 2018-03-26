@@ -1,12 +1,19 @@
-Calico
-------
+# Calico
 
-Calico is a ray/geometry intersection library for building ray-traced applications.  Its focus is on presenting an API that works with your existing datastructures through use of the [adapter design pattern](http://sourcemaking.com/design_patterns/adapter). Because it is implemented using templates, Calico is a header-only library with nothing to compile. You may include Calico in your project by adding it to your include path, and including its headers.
+**Calico is under development and does not currently function, except in the most basic manner.**
 
-Calico is a ray-casting engine, which can be used to build a ray-tracer. For example, it focuses on answering the question of "what surfaces did this ray hit?".  It does not provide reflection or transmission calculations, lighting calculations, etc.  The physics simulation is left to the implementer as they are the pieces that are application specific.
+Calico is a ray/geometry intersection library for building ray-traced applications.
+Its focus is on presenting an API that works with your existing datastructures through use of the [adapter design pattern](http://sourcemaking.com/design_patterns/adapter).
+Because it is implemented using templates, Calico is a header-only library with nothing to compile.
+You may include Calico in your project by adding it to your include path, and including its headers.
 
-Uses
-====
+Calico is a ray-casting engine, which can be used to build a ray-tracer.
+For example, it focuses on answering the question of "what surfaces did this ray hit?".
+It does not provide reflection or transmission calculations, lighting calculations, etc.
+The physics simulation is left to the implementer as they are the pieces that are application specific.
+
+## Uses
+
 Ideas for how Calico can be used include:
 
 1. the basis of a ray-physics simulation such as:
@@ -17,24 +24,31 @@ Ideas for how Calico can be used include:
 4. electromagnetic shooting-and-bouncing-rays (SBR)
 
 
-Adapter interface
-=================
+## Adapter interface
 
 While the canonical implementation of the Adapter design pattern uses polymorphism, Calico implements the pattern through C++ templates; an approach inspired by [nanoflann](https://github.com/jlblancoc/nanoflann) by Jose-Luis Blanco-Claraco.
 
-The disadvantage of this template based implementation is that errors from the compiler are considerably more cryptic than when using polymorphism.  However, the performance should be substantially higher for two reasons:
+The disadvantage of this template based implementation is that errors from the compiler are considerably more cryptic than when using polymorphism.
+However, the performance should be substantially higher for two reasons:
 
 1. there are no virtual functions and hence no vtable lookups/branch mispredictions
 2. your adapter code is available to the compiler for inlining.
 
-The second point means that a really smart compiler could produce an implementation that is just as fast as if I had designed Calico to use your datastructures directly rather than through an interface.  I.e. the adapter overhead is reduced at compile time to near zero. However, the performance of the ray casting is dependent on how memory/cache friendly your adapted data structures are. I recommend using a structure-of-arrays approach to designing your data structures as that generally provides a cache friendly data layout, and sets up conditions to best allow the compiler to auto-vectorize the
-implementation. See Intel's [Optimization Reference Manual](http://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-optimization-manual.html) for more best practices.
+The second point means that a really smart compiler could produce an implementation that is just as fast as if I had designed Calico to use your datastructures directly rather than through an interface.
+I.e. the adapter overhead is reduced at compile time to near zero.
+However, the performance of the ray casting is dependent on how memory/cache friendly your adapted data structures are.
+I recommend using a structure-of-arrays approach to designing your data structures as that generally provides a cache friendly data layout, and sets up conditions to best allow the compiler to auto-vectorize the implementation.
+See Intel's [Optimization Reference Manual](http://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-optimization-manual.html) for more best practices.
 
-Usage
-=====
-As previously stated, Calico traverses your existing data structures by using adapters that you provide. Details of the various adapters are provided in the following sections. In its most basic usage, you must provide a Mesh adapter that allows Calico to walk your triangular mesh. The rest of the system can utilize adapters provided within the Calico library itself, or you can provide your own structures for advanced control.
+## Usage
 
-Calico can be used by defining a Tracer object and assigning to that Tracer a Mesh Adapter and Acceleration Structure. Below is a simple example that traces a single ray against a compile-time defined square mesh object named Plate.
+As previously stated, Calico traverses your existing data structures by using adapters that you provide.
+Details of the various adapters are provided in the following sections.
+In its most basic usage, you must provide a Mesh adapter that allows Calico to walk your triangular mesh.
+The rest of the system can utilize adapters provided within the Calico library itself, or you can provide your own structures for advanced control.
+
+Calico can be used by defining a Tracer object and assigning to that Tracer a Mesh Adapter and Acceleration Structure.
+Below is a simple example that traces a single ray against a compile-time defined square mesh object named Plate.
 
 ```C++
   #include <calico/tracer.hpp>
@@ -113,33 +127,49 @@ Calico can be used by defining a Tracer object and assigning to that Tracer a Me
   }
 ```
 
-Mesh
-----
+## Mesh
 
-All usages of Calico will involve defining an adapter to your mesh data structures. The adapter provides Calico with a way to traverse the mesh by investigating it one triangle at a time. Internally, Calico views the world through Structure-of-Arrays style interfaces, but your data does not need to be laid out that way. The interface is the only thing that is important to Calico. Each mesh adapter must provide at least the following interface, but may provide additional convenience methods for your own use.
+All usages of Calico will involve defining an adapter to your mesh data structures.
+The adapter provides Calico with a way to traverse the mesh by investigating it one triangle at a time.
+Internally, Calico views the world through Structure-of-Arrays style interfaces, but your data does not need to be laid out that way.
+The interface is the only thing that is important to Calico.
+Each mesh adapter must provide at least the following interface, but may provide additional convenience methods for your own use.
+
+  `FloatType typedef`
+   This typedef provides access to the floating-point type used by the mesh. A good choice is `float` or `double`.
 
   `FaceId typedef`
    This typedef defines a mechanism for naming each face. A good choice is an `std::int32_t` (aka int on most platforms).
+   Some of the algorithms iterate over the face IDs using a ++ operator, so this type needs to be able to increment as an iterator.
 
   `VertexId typedef`
    This typedef defines a mechanism for naming each vertex. A good choice is an `std::int32_t` (aka int on most platforms).
+   Some of the algorithms iterate over the vertex IDs using a ++ operator, so this type needs to be able to increment as an iterator.
 
   `static const FaceId ray_miss_id_c`
-   This constant defines the ID that Calico can use to indicate that a ray did not strike any face when tracing the scene. It should be a value that will never be assigned as the identifier for a face in the mesh. A common choice is -1 when a signed data type is used.
+   This constant defines the ID that Calico can use to indicate that a ray did not strike any face when tracing the scene.
+   It should be a value that will never be assigned as the identifier for a face in the mesh.
+   A common choice is -1 when a signed data type is used.
 
   `bounding_box(Float &min_x, Float &min_y, Float &min_z,
                 Float &max_x, Float &max_y, Float &max_z) const`
-   The adapter should be able to compute a bounding box for the mesh and set the minimum and maximum values into the variables passed by reference into this routine. It should also not modify the underlying mesh in the process (hence its const attribute). Each of Float should be of the same floating point precision type that was chosen for Calico's internal use (see example above).
+   The adapter should be able to compute a bounding box for the mesh and set the minimum and maximum values into the variables passed by reference into this routine.
+   It should also not modify the underlying mesh in the process (hence its const attribute).
+   Each of Float should be of the same floating point precision type that was chosen for Calico's internal use (see example above).
 
   `Float x(FaceId id, VertexId corner) const`
   `Float y(FaceId id, VertexId corner) const`
   `Float z(FaceId id, VertexId corner) const`
-   This method of the adapter should return the x, y or z component of the `corner`'th vertex of triangle `id`. For example, suppose triangle 2 of the mesh is defined with the following three vertices: `(0, 0, 0) (6, 2, 3), (-4, 5, 1)`. Calling `x(2, 0)` would return 0; `x(2, 1)` would return 6; and `x(2, 2)` would return -4. This routine should return a floating point value.
+   This method of the adapter should return the x, y or z component of the `corner`'th vertex of triangle `id`.
+   For example, suppose triangle 2 of the mesh is defined with the following three vertices: `(0, 0, 0) (6, 2, 3), (-4, 5, 1)`.
+   Calling `x(2, 0)` would return 0; `x(2, 1)` would return 6; and `x(2, 2)` would return -4.
+   This routine should return a floating point value.
 
   `Float normal_x(FaceId id) const`
   `Float normal_y(FaceId id) const`
   `Float normal_z(FaceId id) const`
-   Returns the x, y or z component of face `id`'s unit normal. Because this routine will be called frequently and because we query the x, y and z components separately, it is a good idea to compute the unit normal a priori and store it for future accesses.
+   Returns the x, y or z component of face `id`'s unit normal.
+   Because this routine will be called frequently and because we query the x, y and z components separately, it is a good idea to compute the unit normal a priori and store it for future accesses.
 
   `Float d(FaceId id) const`
    Returns the distance that the triangle lies along the normal vector from the origin.
@@ -150,12 +180,12 @@ All usages of Calico will involve defining an adapter to your mesh data structur
   `FaceId size() const`
    Number of triangles in the mesh.
 
-Plan
-====
+# Plan
 
 **Calico is under development and does not currently function, except in the most basic manner.**
 
 - [X] Design mesh adapter interface
+  - [ ] Explore refactoring the mesh adapter interface to use iterators for face IDs and vertex IDs.
 - [X] Design ray adapter interface
   - [X] Provide helper adapter for structure-of-arrays ray inputs
 - [X] Implement a math library to support ray-tracing routines
@@ -170,6 +200,7 @@ Plan
     - [ ] Write unit tests to verify acceleration structure works in a variety of cases
 - [ ] Write demonstration image rendering application using framework to render Wavefront OBJ meshes
 
-License
-=======
-Calico is provided under the simplified BSD license.  See LICENSE for details.
+# License
+
+Calico is provided under the simplified BSD license.
+See LICENSE for details.
