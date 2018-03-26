@@ -42,6 +42,7 @@ class Plate {
 public:
     typedef int FaceId;
     typedef std::size_t VertexId;
+    typedef Float FloatType;
     
     static const FaceId ray_miss_id_c = -1;
 

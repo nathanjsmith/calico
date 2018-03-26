@@ -31,36 +31,12 @@
 #include <algorithm>
 #include <limits>
 #include <iostream>
+#include <memory>
+
+#include <stdlib.h> // for aligned_alloc
 
 namespace calico {
 namespace accelerator {
-
-/**
-  interface to the routines in std:: that we need for running the routines in
-  accelerator. It provides:
-
-    max_infinity   -- A routine that returns +infinity
-    min_infinity   -- A routine that returns -infinity
-    max            -- A routine that returns the larger of a and b
-    min            -- A routine that returns the smaller of a and b
-*/
-template <typename Float>
-struct StdTypeInterface {
-  inline constexpr static Float min_infinity() {
-    return -std::numeric_limits<Float>::infinity();
-  }
-  
-  inline constexpr static Float max_infinity() {
-    return std::numeric_limits<Float>::infinity();
-  }
-  
-  inline static Float min(Float a, Float b) {std::min(a, b);}
-  
-  inline static Float max(Float a, Float b) {std::max(a, b);}
-};
-//=============================================================================
-
-
 template <typename Float>
 constexpr Float ize_scalar();
 
@@ -115,7 +91,7 @@ constexpr double ize_scalar<double>() {return 1.0000000000000004;}
     @return                 true if the ray intersects the bounding box, false
                             if it does not.
 */
-template <typename Float, typename interface=StdTypeInterface<Float>>
+template <typename Float, typename interface=calico::math::StdTypeInterface<Float>>
 bool intersects(
         const Float ray_start_x,             const Float ray_start_y,             const Float ray_start_z,
         const Float ray_direction_x,         const Float ray_direction_y,         const Float ray_direction_z,
@@ -158,12 +134,65 @@ bool intersects(
 }
 
 
+/**
+    For a pointer that was allocated using malloc, calloc, aligned_alloc, etc.,
+    free that memory and assign nullptr. The pointer is passed by reference so
+    that it can be assigned a value.
+*/
+template <typename T>
+void release(T &p) {
+    free(p);
+    p = nullptr;
+}
+
+/**
+    Collection of bounding boxes and mesh-face centroids stored using SoA
+    layout.  Memory is automatically allocated on construction and released on
+    destruction. See compute_mesh_bounds_and_centroids() for constructing a new
+    bounding-box collection from a Mesh.
+*/
 template <typename Float>
 class BoundingBoxes {
 public:
     BoundingBoxes() : min_x(nullptr), min_y(nullptr), min_z(nullptr),
                       max_x(nullptr), max_y(nullptr), max_z(nullptr),
+                      centroid_x(nullptr), centroid_y(nullptr), centroid_z(nullptr),
                       count(0u) {}
+
+    BoundingBoxes(const std::size_t count_) 
+                    : min_x(nullptr), min_y(nullptr), min_z(nullptr),
+                      max_x(nullptr), max_y(nullptr), max_z(nullptr),
+                      centroid_x(nullptr), centroid_y(nullptr), centroid_z(nullptr),
+                      count(count_) 
+    {
+        // Use the aligned_alloc function from C11 (/not/ C++11, just C11)
+        min_x = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+        min_y = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+        min_z = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+
+        max_x = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+        max_y = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+        max_z = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+
+        centroid_x = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+        centroid_y = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+        centroid_z = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+    }
+
+    ~BoundingBoxes() {
+        release(min_x);
+        release(min_y);
+        release(min_z);
+        release(max_x);
+        release(max_y);
+        release(max_z);
+        release(centroid_x);
+        release(centroid_y);
+        release(centroid_z);
+        count = 0u;
+    }
+
+    std::size_t size() const {return count;}
 
     Float      *min_x;
     Float      *min_y;
@@ -171,8 +200,43 @@ public:
     Float      *max_x;
     Float      *max_y;
     Float      *max_z;
+    Float      *centroid_x;
+    Float      *centroid_y;
+    Float      *centroid_z;
     std::size_t count;
 };
+
+
+/**
+    Compute the bounding boxes of all triangles in the mesh. Also compute the
+    centroid of each mesh face.
+
+    @return Unique pointer to a new BoundingBoxes object
+*/
+template <typename MeshAdapter, typename FloatInterface=calico::math::StdTypeInterface<typename MeshAdapter:: FloatType>>
+std::unique_ptr<BoundingBoxes<typename MeshAdapter::FloatType>>
+    compute_mesh_bounds_and_centroids(const MeshAdapter &mesh) 
+{
+    constexpr typename MeshAdapter::FloatType one_third{1./3.};
+    auto bounds = 
+        std::unique_ptr<BoundingBoxes<typename MeshAdapter::FloatType>>(
+                new BoundingBoxes<typename MeshAdapter::FloatType>(mesh.size()));
+    for (typename MeshAdapter::FaceId i{0u}; i < bounds->count; ++i) {
+        bounds->min_x[i] = FloatInterface::min(mesh.x(i, 0), FloatInterface::min(mesh.x(i, 1), mesh.x(i, 2)));
+        bounds->min_y[i] = FloatInterface::min(mesh.y(i, 0), FloatInterface::min(mesh.y(i, 1), mesh.y(i, 2)));
+        bounds->min_z[i] = FloatInterface::min(mesh.z(i, 0), FloatInterface::min(mesh.z(i, 1), mesh.z(i, 2)));
+
+        bounds->max_x[i] = FloatInterface::max(mesh.x(i, 0), FloatInterface::max(mesh.x(i, 1), mesh.x(i, 2)));
+        bounds->max_y[i] = FloatInterface::max(mesh.y(i, 0), FloatInterface::max(mesh.y(i, 1), mesh.y(i, 2)));
+        bounds->max_z[i] = FloatInterface::max(mesh.z(i, 0), FloatInterface::max(mesh.z(i, 1), mesh.z(i, 2)));
+
+        bounds->centroid_x[i] = (mesh.x(i, 0) + mesh.x(i, 1) + mesh.x(i, 2)) * one_third;
+        bounds->centroid_y[i] = (mesh.y(i, 0) + mesh.y(i, 1) + mesh.y(i, 2)) * one_third;
+        bounds->centroid_z[i] = (mesh.z(i, 0) + mesh.z(i, 1) + mesh.z(i, 2)) * one_third;
+    }
+
+    return std::move(bounds);
+}
 
 
 }// end namespace calico::accelerator

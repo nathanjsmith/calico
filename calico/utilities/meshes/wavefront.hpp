@@ -40,7 +40,6 @@ namespace meshes {
 class ParseError : public std::exception {
 public:
     ParseError(const std::string &err) : _what(err) {}
-    // virtual const char* what() const _GLIBCXX_USE_NOEXCEPT {return _what.c_str();}
     virtual const char* what() const noexcept {return _what.c_str();}
 private:
     std::string _what;
@@ -76,6 +75,7 @@ class Wavefront {
 public:
     typedef int FaceId;
     typedef std::size_t VertexId;
+    typedef Float FloatType;
     
     static const FaceId ray_miss_id_c = -1;
 

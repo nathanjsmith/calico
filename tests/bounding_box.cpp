@@ -23,6 +23,7 @@
 // 
 
 #include <calico/accelerator/bounding_box.hpp>
+#include <calico/utilities/meshes/plate.hpp>
 
 #include <random>
 #include <iostream>
@@ -125,7 +126,7 @@ BOOST_AUTO_TEST_CASE(hard_coded_cases) {
   const size_t j(0);
   for (size_t i = 0u; i < ray_count; ++i) {
     Float min_t{0};
-    Float max_t = calico::accelerator::StdTypeInterface<Float>::max_infinity();
+    Float max_t = calico::math::StdTypeInterface<Float>::max_infinity();
     bool safe = 
       calico::accelerator::intersects(start_x[i], start_y[i], start_z[i],
                                       direction_x[i], direction_y[i], direction_z[i],
@@ -208,7 +209,7 @@ BOOST_AUTO_TEST_CASE(axis_aligned_hits) {
         const Float inverse_direction_z{Float(1)/direction_z};
 
         Float min_t{0};
-        Float max_t{calico::accelerator::StdTypeInterface<Float>::max_infinity()};
+        Float max_t{calico::math::StdTypeInterface<Float>::max_infinity()};
 
         hit = calico::accelerator::intersects(start_x, start_y, start_z,
                                               direction_x, direction_y, direction_z,
@@ -320,7 +321,7 @@ BOOST_AUTO_TEST_CASE(generalized_hits) {
       const Float inverse_direction_z{Float(1)/direction_z};
 
       Float min_t{0};
-      Float max_t{calico::accelerator::StdTypeInterface<Float>::max_infinity()};
+      Float max_t{calico::math::StdTypeInterface<Float>::max_infinity()};
 
       bool hit =
             calico::accelerator::intersects(start_x, start_y, start_z,
@@ -458,7 +459,7 @@ BOOST_AUTO_TEST_CASE(generalized_misses) {
         const Float inverse_direction_z{Float(1)/direction_z};
 
         Float min_t{0};
-        Float max_t{calico::accelerator::StdTypeInterface<Float>::max_infinity()};
+        Float max_t{calico::math::StdTypeInterface<Float>::max_infinity()};
 
         bool hit =
               calico::accelerator::intersects(start_x, start_y, start_z,
@@ -482,5 +483,18 @@ BOOST_AUTO_TEST_CASE(generalized_misses) {
 
 }
 
+
+
+/**
+  Generates points that lie above, to the side-of, or below the bounding box,
+  fires a ray towards those points, and verifies that they missed.
+*/
+BOOST_AUTO_TEST_CASE(bounding_box_calculation) {
+
+    calico::utilities::meshes::Plate<double> mesh;
+    auto bb = calico::accelerator::compute_mesh_bounds_and_centroids(mesh);
+
+    BOOST_REQUIRE_EQUAL(mesh.size(), bb->size());
+}
 
 

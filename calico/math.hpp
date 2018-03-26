@@ -26,9 +26,43 @@
 #define __CALICO__MATH__HPP__
 
 #include <cmath>
+#include <limits>
+#include <algorithm>
 
 namespace calico {
 namespace math {
+
+/**
+  Interface to the routines in std:: that we need for running the routines in
+  accelerator. It provides:
+
+    max_infinity   -- A routine that returns +infinity
+    min_infinity   -- A routine that returns -infinity
+    max            -- A routine that returns the larger of a and b
+    min            -- A routine that returns the smaller of a and b
+    sqrt           -- A routine that returns sqrt(a)
+
+  This interface abstracts away details of the type being used. If you are
+  using a non-standard type with Calico, you will need to provide an
+  alternative implementation. For example, if you provide a type using
+  GNU-multi-precision, then you may need to provide a different interface for
+  square-root, minimum, maximum, etc.
+*/
+template <typename Float>
+struct StdTypeInterface {
+  inline constexpr static Float min_infinity() {
+    return -std::numeric_limits<Float>::infinity();
+  }
+  
+  inline constexpr static Float max_infinity() {
+    return std::numeric_limits<Float>::infinity();
+  }
+  
+  inline static Float min(const Float &a, const Float &b) {return std::min(a, b);}
+  inline static Float max(const Float &a, const Float &b) {return std::max(a, b);}
+  inline static Float sqrt(const Float &a) {return std::sqrt(a);}
+};
+//=============================================================================
 
 
 /**
@@ -55,19 +89,19 @@ Float dot(const Float &x1, const Float &y1, const Float &z1,
 /**
     Return the length of the vector defined by (x,y,z)
 */
-template <typename Float>
+template <typename Float, typename interface=StdTypeInterface<Float>>
 Float length(const Float &x, const Float &y, const Float &z) {
-    return std::sqrt(dot(x,y,z,  x,y,z));
+    return interface::sqrt(dot(x,y,z,  x,y,z));
 }
 //=============================================================================
 
 
-template <typename Float>
+template <typename Float, typename interface=StdTypeInterface<Float>>
 void normalize(Float &x, Float &y, Float &z) {
-  Float len = length(x, y, z);
-  x /= len;
-  y /= len;
-  z /= len;
+  Float inverse_len = Float(1)/length<Float, interface>(x, y, z);
+  x *= inverse_len;
+  y *= inverse_len;
+  z *= inverse_len;
 }
 //=============================================================================
 
@@ -115,7 +149,7 @@ void cross(const FloatA &x1, const FloatA &y1, const FloatA &z1,
 
   area = |(B - A) x (C - A)| / 2
 */
-template <typename Float>
+template <typename Float, typename interface=StdTypeInterface<Float>>
 Float area(const Float &x0, const Float &y0, const Float &z0,
            const Float &x1, const Float &y1, const Float &z1,
            const Float &x2, const Float &y2, const Float &z2)
@@ -124,7 +158,7 @@ Float area(const Float &x0, const Float &y0, const Float &z0,
   math::cross(x1 - x0, y1 - y0, z1 - z0,
               x2 - x0, y2 - y0, z2 - z0,
               xx, yy, zz);
-  return math::length(xx, yy, zz) * Float(0.5);
+  return math::length<Float, interface>(xx, yy, zz) * Float(0.5);
 }
 //=============================================================================
 
@@ -176,7 +210,7 @@ public:
 
         // Get the area of the triangle we're testing and double it to make the
         // following calculations faster.
-        Float facet_area = mesh.area(face);
+        Float inverse_facet_area = Float(1.) / mesh.area(face);
 
         // Find the area of triangle (A, B, P) and scale it by the area of the
         // whole parent triangle.  We use double the area because the length of the
@@ -184,7 +218,7 @@ public:
         // the triangle area.
         Float u = math::area(mesh.x(face, 0), mesh.y(face, 0), mesh.z(face, 0), 
                              mesh.x(face, 1), mesh.y(face, 1), mesh.z(face, 1), 
-                             p_x, p_y, p_z) / facet_area;
+                             p_x, p_y, p_z) * inverse_facet_area;
 
         // Find the area of triangle (C, A, P) and scale it by the area of the
         // whole parent triangle.  We use double the area because the length of the
@@ -192,7 +226,7 @@ public:
         // the triangle area.
         Float v = math::area(mesh.x(face, 2), mesh.y(face, 2), mesh.z(face, 2), 
                              mesh.x(face, 0), mesh.y(face, 0), mesh.z(face, 0), 
-                             p_x, p_y, p_z) / facet_area;
+                             p_x, p_y, p_z) * inverse_facet_area;
 
         Float w = Float(1) - u - v;
 
@@ -209,7 +243,7 @@ public:
     The same as MollerTrumboreContainmentTest except that it computes the
     value w from the point and the triangle corners rather than from u and v.
 */
-template <typename Float, typename Mesh>
+template <typename Float, typename Mesh, typename interface=StdTypeInterface<Float>>
 class PluckerContainmentTest
 {
 public:
@@ -247,13 +281,13 @@ public:
         // area.
         Float tmp_x, tmp_y, tmp_z;
         cross(ax, ay, az, bx, by, bz, tmp_x, tmp_y, tmp_z);
-        const Float u = length(tmp_x, tmp_y, tmp_z) * inverse_double_area;
+        const Float u = length<Float, interface>(tmp_x, tmp_y, tmp_z) * inverse_double_area;
 
         cross(bx, by, bz, cx, cy, cz, tmp_x, tmp_y, tmp_z);
-        const Float v = length(tmp_x, tmp_y, tmp_z) * inverse_double_area;
+        const Float v = length<Float, interface>(tmp_x, tmp_y, tmp_z) * inverse_double_area;
 
         cross(cx, cy, cz, ax, ay, az, tmp_x, tmp_y, tmp_z);
-        const Float w = length(tmp_x, tmp_y, tmp_z) * inverse_double_area;
+        const Float w = length<Float, interface>(tmp_x, tmp_y, tmp_z) * inverse_double_area;
 
         return (Float(0) <= u && u <= Float(1) &&
                 Float(0) <= v && v <= Float(1) &&
