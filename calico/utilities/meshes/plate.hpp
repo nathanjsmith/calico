@@ -25,6 +25,8 @@
 #ifndef __CALICO__UTILITIES__MESHES__PLATE__HPP__
 #define __CALICO__UTILITIES__MESHES__PLATE__HPP__
 
+#include <calico/math.hpp>
+
 #include <vector>
 #include <iostream>
 
@@ -37,10 +39,11 @@ namespace meshes {
     defines a flat plate located on the XY plane with normals pointing along
     +Z.
 */
-template <typename Float>
+template <typename Float, typename interface=calico::math::StdTypeInterface<Float>>
 class Plate {
 public:
     typedef int FaceId;
+    typedef int FaceIdIterator;
     typedef std::size_t VertexId;
     typedef Float FloatType;
     
@@ -84,6 +87,14 @@ public:
         _x[5] = 1;
         _y[5] = -1;
         _z[5] = plate_z;
+
+        _min_x = interface::max_infinity();
+        _min_y = interface::max_infinity();
+        _min_z = interface::max_infinity();
+
+        _max_x = interface::min_infinity();
+        _max_y = interface::min_infinity();
+        _max_z = interface::min_infinity();
 
         for (FaceId i = 0u; i < 2u; ++i) {
             // Automatically compute the normal and d for the triangle
@@ -138,6 +149,9 @@ public:
         max_y = _max_y;
         max_z = _max_z;
     }
+
+    FaceIdIterator begin_face_id() const {return 0u;}
+    FaceIdIterator end_face_id() const {return _normal_x.size();}
 
     Float x(FaceId id, VertexId corner) const {return _x[id*3+corner];}
     Float y(FaceId id, VertexId corner) const {return _y[id*3+corner];}

@@ -1,4 +1,4 @@
-// Copyright (c) 2017, Nathan Smith <nathanjsmith@gmail.com>
+// Copyright (c) 2017-2018, Nathan Smith <nathanjsmith@gmail.com>
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without
@@ -491,10 +491,45 @@ BOOST_AUTO_TEST_CASE(generalized_misses) {
 */
 BOOST_AUTO_TEST_CASE(bounding_box_calculation) {
 
-    calico::utilities::meshes::Plate<double> mesh;
+    typedef calico::utilities::meshes::Plate<double> Mesh;
+    Mesh mesh;
     auto bb = calico::accelerator::compute_mesh_bounds_and_centroids(mesh);
 
     BOOST_REQUIRE_EQUAL(mesh.size(), bb->size());
+
+    // Do the bounding boxes represent the bounding box of the whole problem?
+    // They should.
+    const double inf{std::numeric_limits<double>::infinity()};
+    double min_x{inf},  min_y{inf},  min_z{inf};
+    double max_x{-inf}, max_y{-inf}, max_z{-inf};
+    for (std::size_t i{0u}; i < bb->size(); ++i) {
+      min_x = std::min(min_x, bb->min_x[i]);
+      min_y = std::min(min_y, bb->min_y[i]);
+      min_z = std::min(min_z, bb->min_z[i]);
+
+      max_x = std::max(max_x, bb->max_x[i]);
+      max_y = std::max(max_y, bb->max_y[i]);
+      max_z = std::max(max_z, bb->max_z[i]);
+    }
+
+    double bb_min_x, bb_min_y, bb_min_z;
+    double bb_max_x, bb_max_y, bb_max_z;
+    mesh.bounding_box(bb_min_x, bb_min_y, bb_min_z,
+                      bb_max_x, bb_max_y, bb_max_z);
+    std::cerr << "Bounding box is: (" << bb_min_x << ", "
+                                      << bb_min_y << ", "
+                                      << bb_min_z << ") "
+                               " - (" << bb_max_x << ", "
+                                      << bb_max_y << ", "
+                                      << bb_max_z << ")" << std::endl;
+
+    BOOST_REQUIRE_CLOSE(min_x, bb_min_x, 0.001);
+    BOOST_REQUIRE_CLOSE(min_y, bb_min_y, 0.001);
+    BOOST_REQUIRE_CLOSE(min_z, bb_min_z, 0.001);
+
+    BOOST_REQUIRE_CLOSE(max_x, bb_max_x, 0.001);
+    BOOST_REQUIRE_CLOSE(max_y, bb_max_y, 0.001);
+    BOOST_REQUIRE_CLOSE(max_z, bb_max_z, 0.001);
 }
 
 

@@ -74,6 +74,7 @@ template <typename Float>
 class Wavefront {
 public:
     typedef int FaceId;
+    typedef int FaceIdIterator;
     typedef std::size_t VertexId;
     typedef Float FloatType;
     
@@ -269,6 +270,11 @@ public:
     Float area(FaceId id) const {return _area[id];}
 
     FaceId size() const {return _normal_x.size();}
+
+    /// Iterator over FaceIds used by this mesh
+    FaceIdIterator begin_face_id() const {return 0u;}
+    /// End iterator.
+    FaceIdIterator end_face_id() const {return size();}
 
 private:
     std::vector<Float> _normal_x;

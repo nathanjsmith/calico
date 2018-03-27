@@ -221,7 +221,8 @@ std::unique_ptr<BoundingBoxes<typename MeshAdapter::FloatType>>
     auto bounds = 
         std::unique_ptr<BoundingBoxes<typename MeshAdapter::FloatType>>(
                 new BoundingBoxes<typename MeshAdapter::FloatType>(mesh.size()));
-    for (typename MeshAdapter::FaceId i{0u}; i < bounds->count; ++i) {
+    const typename MeshAdapter::FaceIdIterator last{mesh.end_face_id()};
+    for (typename MeshAdapter::FaceIdIterator i{mesh.begin_face_id()}; i != last; ++i) {
         bounds->min_x[i] = FloatInterface::min(mesh.x(i, 0), FloatInterface::min(mesh.x(i, 1), mesh.x(i, 2)));
         bounds->min_y[i] = FloatInterface::min(mesh.y(i, 0), FloatInterface::min(mesh.y(i, 1), mesh.y(i, 2)));
         bounds->min_z[i] = FloatInterface::min(mesh.z(i, 0), FloatInterface::min(mesh.z(i, 1), mesh.z(i, 2)));
