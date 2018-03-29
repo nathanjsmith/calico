@@ -8,7 +8,7 @@ Because it is implemented using templates, Calico is a header-only library with 
 You may include Calico in your project by adding it to your include path, and including its headers.
 
 Calico is a ray-casting engine, which can be used to build a ray-tracer.
-For example, it focuses on answering the question of "what surfaces did this ray hit?".
+It focuses on answering the question of "what surfaces did this ray hit?".
 It does not provide reflection or transmission calculations, lighting calculations, etc.
 The physics simulation is left to the implementer as they are the pieces that are application specific.
 
@@ -44,10 +44,10 @@ See Intel's [Optimization Reference Manual](http://www.intel.com/content/www/us/
 
 As previously stated, Calico traverses your existing data structures by using adapters that you provide.
 Details of the various adapters are provided in the following sections.
-In its most basic usage, you must provide a Mesh adapter that allows Calico to walk your triangular mesh.
+In its most basic usage, you must provide a `Mesh Adapter` that allows Calico to walk your triangular mesh.
 The rest of the system can utilize adapters provided within the Calico library itself, or you can provide your own structures for advanced control.
 
-Calico can be used by defining a Tracer object and assigning to that Tracer a Mesh Adapter and Acceleration Structure.
+Calico can be used by defining a `Tracer` object and assigning to that `Tracer` a `Mesh Adapter` and `Acceleration Structure`.
 Below is a simple example that traces a single ray against a compile-time defined square mesh object named Plate.
 
 ```C++
@@ -80,12 +80,15 @@ Below is a simple example that traces a single ray against a compile-time define
 
     // We can finally create a tracer object. This object will traverse the
     // accelerator and mesh to determine what each ray strikes when we call
-    // trace_rays. It can be used over and over again. 
+    // trace_rays. It can be used over and over again. Because its interfaces
+    // are all const, it is also re-entrant, and thus thread safe. If the
+    // underlying mesh changes, a new Accelerator and Tracer must be
+    // constructed.
     auto tracer = calico::make_tracer(accelerator);
 
     // Create one ray pointing towards the plate using the Structure-of-Arrays
     // (SoA) SoaInput adapter provided with Calico. We're using arrays, but these
-    // could just as easily be std::vectors, they just need to be "array-like"
+    // could just as easily be std::vectors. They just need to be "array-like"
     // using array access syntax.
     const std::size_t ray_count{1};
     Mesh::FaceId start_face_id[1] = {Mesh::ray_miss_id_c};
@@ -102,24 +105,26 @@ Below is a simple example that traces a single ray against a compile-time define
 
     // Make a SoaResult structure with enough storage space to hold the results
     // from tracing all of the rays (one ray, in our example). You can write your 
-    // result structures, but SoaResult is provided with Calico.
+    // own result structures, but SoaResult is provided with Calico. The
+    // initial values are not important.
     Mesh::FaceId strike_face_id[1] = {Mesh::ray_miss_id_c};
     Float t[1]                     = {-1000.};
     Float hit_x[1]                 = {-1000.};
     Float hit_y[1]                 = {-1000.};
     Float hit_z[1]                 = {-1000.};
     auto results =
-      calico::result::make_soa_result<Float, std::size_t>
+      calico::result::make_soa_result<Float, Mesh::FaceId>
           (strike_face_id, t, hit_x, hit_y, hit_z);
 
-    // Trace the rays. The strike object (if any) and its distance are stored in
+    // Trace the rays. The strike facet (if any) and its distance are stored in
     // results.
     tracer.trace_rays(rays, results);
 
-    if (strike_id[0] != Mesh::ray_miss_id_c) {
-      std::cerr << "Hit facet " << strike_id[0] << " at ("
+    if (strike_face_id[0] != Mesh::ray_miss_id_c) {
+      std::cerr << "Hit facet " << strike_face_id[0] << " at ("
                 << hit_x[0] << ", " << hit_y[0] << ", " << hit_z[0]
-                << ")" << std::endl;
+                << "), which is " << t[0] << " units along the ray direction" 
+                << std::endl;
     }
     else {
       std::cerr << "The ray missed!" << std::endl;
@@ -140,7 +145,10 @@ Each mesh adapter must provide at least the following interface, but may provide
 
   `FaceId typedef`
    This typedef defines a mechanism for naming each face. A good choice is an `std::int32_t` (aka int on most platforms).
+
+  `FaceIdIterator typedef`
    Some of the algorithms iterate over the face IDs using a ++ operator, so this type needs to be able to increment as an iterator.
+   See the `begin_face_id()` interface for more details, but if FaceId is an `std::int32_t`, then `std::int32_t` is also a good choice for the FaceIdIterator.
 
   `VertexId typedef`
    This typedef defines a mechanism for naming each vertex. A good choice is an `std::int32_t` (aka int on most platforms).
@@ -180,12 +188,33 @@ Each mesh adapter must provide at least the following interface, but may provide
   `FaceId size() const`
    Number of triangles in the mesh.
 
+  `FaceIdIterator begin_face_id() const`
+  `FaceIdIterator end_face_id() const`
+   Iterator to the first face ID in the mesh, and the end of iteration through FaceIds respectively.
+   Iterating through the list of face IDs should be achievable using this object.
+   That is, the following for loop should print out the set of all valid FaceIds and their vertices in a mesh named `mesh` of type `Mesh`:
+
+```C++
+   for (Mesh::FaceIdIterator it = mesh.begin_face_id(); it != mesh.end_face_id(); ++it) {
+     std::cout << "Face(" << it << ") uses vertices " 
+               << "(" << mesh.x(it, 0) << "," mesh.y(it, 0) << "," << mesh.z(it, 0) << "), "
+               << "(" << mesh.x(it, 1) << "," mesh.y(it, 1) << "," << mesh.z(it, 1) << "), "
+               << "(" << mesh.x(it, 2) << "," mesh.y(it, 2) << "," << mesh.z(it, 2) << ")\n";
+   }
+```
+   
+   Whatever type is returned should be implicitly convertible into a FaceId type, and must support the pre- and post- operator++ interface.
+   It must support the operator!=(FaceIdIterator) interface to indicate that the current iterator is *not* at the end iterator.
+   Unless you are using an esoteric face ID (like a std::string), the FaceId type is probably sufficient.
+   For example, having the iterator be an int when the FaceId is an int will work perfectly.
+
+
 # Plan
 
 **Calico is under development and does not currently function, except in the most basic manner.**
 
 - [X] Design mesh adapter interface
-  - [ ] Explore refactoring the mesh adapter interface to use iterators for face IDs and vertex IDs.
+  - [X] Explore refactoring the mesh adapter interface to use iterators for face IDs.
 - [X] Design ray adapter interface
   - [X] Provide helper adapter for structure-of-arrays ray inputs
 - [X] Implement a math library to support ray-tracing routines

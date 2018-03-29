@@ -242,6 +242,8 @@ public:
 /**
     The same as MollerTrumboreContainmentTest except that it computes the
     value w from the point and the triangle corners rather than from u and v.
+    This should be more accurate than MollerTrumboreContainmentTest as a
+    result, but intersection tests will be more expensive.
 */
 template <typename Float, typename Mesh, typename interface=StdTypeInterface<Float>>
 class PluckerContainmentTest
