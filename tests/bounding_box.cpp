@@ -25,13 +25,13 @@
 #include <calico/accelerator/bounding_box.hpp>
 #include <calico/utilities/meshes/plate.hpp>
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest.h"
+
 #include <random>
 #include <iostream>
 
-#define BOOST_TEST_MODULE Bounding Box Tests
-#include <boost/test/included/unit_test.hpp>
-
-BOOST_AUTO_TEST_CASE(hard_coded_cases) {
+TEST_CASE("hard_coded_cases") {
   typedef double Float;
 
   const size_t ray_count(6);
@@ -147,12 +147,12 @@ BOOST_AUTO_TEST_CASE(hard_coded_cases) {
                   << "      (" << max_x[j] << ", " << max_y[j] << ", " << max_z[j] << ")\n"
                   << "     ]" << std::endl;
     }
-    BOOST_REQUIRE_EQUAL(expected[i], safe);
+    REQUIRE(expected[i] == safe);
   }
 }
 
 
-BOOST_AUTO_TEST_CASE(axis_aligned_hits) {
+TEST_CASE("axis_aligned_hits") {
   typedef double Float;
 
   std::mt19937 rng;
@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE(axis_aligned_hits) {
         if (!hit) {
           std::cerr << "Ray (" << start_x << ", " << start_y << ", " << start_z << ") -> (" << direction_x << ", " << direction_y << ", " << direction_z << ") missed" << std::endl;
         }
-        BOOST_REQUIRE(hit && "Failed intersection for index");
+        REQUIRE_MESSAGE(hit, "Failed intersection for index " << i);
       }
     }
   }
@@ -233,7 +233,7 @@ BOOST_AUTO_TEST_CASE(axis_aligned_hits) {
   fires a ray towards that point. All of the fired rays should then have an
   intersection with the bounding box.
 */
-BOOST_AUTO_TEST_CASE(generalized_hits) {
+TEST_CASE("generalized_hits") {
   typedef double Float;
 
   std::mt19937 rng;
@@ -333,7 +333,7 @@ BOOST_AUTO_TEST_CASE(generalized_hits) {
       if (!hit) {
         std::cerr << "Ray (" << start_x << ", " << start_y << ", " << start_z << ") -> (" << direction_x << ", " << direction_y << ", " << direction_z << ") missed" << std::endl;
       }
-      BOOST_REQUIRE(hit && "Failed intersection for index");
+      REQUIRE_MESSAGE(hit, "Failed intersection for index" << i);
     }
   }
 
@@ -345,7 +345,7 @@ BOOST_AUTO_TEST_CASE(generalized_hits) {
   Generates points that lie above, to the side-of, or below the bounding box,
   fires a ray towards those points, and verifies that they missed.
 */
-BOOST_AUTO_TEST_CASE(generalized_misses) {
+TEST_CASE("generalized_misses") {
   typedef double Float;
 
   std::mt19937 rng;
@@ -476,7 +476,7 @@ BOOST_AUTO_TEST_CASE(generalized_misses) {
           std::cerr << "Above/below/left/right == " << ablr << std::endl;
           std::cerr << "Side: " << side << std::endl;
         }
-        BOOST_REQUIRE(!hit && "Expected ray to miss the bounding box");
+        REQUIRE_MESSAGE(!hit, "Expected ray " << i << " to miss the bounding box");
       }
     }
   }
@@ -489,13 +489,13 @@ BOOST_AUTO_TEST_CASE(generalized_misses) {
   Generates points that lie above, to the side-of, or below the bounding box,
   fires a ray towards those points, and verifies that they missed.
 */
-BOOST_AUTO_TEST_CASE(bounding_box_calculation) {
+TEST_CASE("bounding_box_calculation") {
 
     typedef calico::utilities::meshes::Plate<double> Mesh;
     Mesh mesh;
     auto bb = calico::accelerator::compute_mesh_bounds_and_centroids(mesh);
 
-    BOOST_REQUIRE_EQUAL(mesh.size(), bb->size());
+    REQUIRE(mesh.size() == bb->size());
 
     // Do the bounding boxes represent the bounding box of the whole problem?
     // They should.
@@ -523,13 +523,13 @@ BOOST_AUTO_TEST_CASE(bounding_box_calculation) {
                                       << bb_max_y << ", "
                                       << bb_max_z << ")" << std::endl;
 
-    BOOST_REQUIRE_CLOSE(min_x, bb_min_x, 0.001);
-    BOOST_REQUIRE_CLOSE(min_y, bb_min_y, 0.001);
-    BOOST_REQUIRE_CLOSE(min_z, bb_min_z, 0.001);
+    REQUIRE(min_x == doctest::Approx(bb_min_x));
+    REQUIRE(min_y == doctest::Approx(bb_min_y));
+    REQUIRE(min_z == doctest::Approx(bb_min_z));
 
-    BOOST_REQUIRE_CLOSE(max_x, bb_max_x, 0.001);
-    BOOST_REQUIRE_CLOSE(max_y, bb_max_y, 0.001);
-    BOOST_REQUIRE_CLOSE(max_z, bb_max_z, 0.001);
+    REQUIRE(max_x == doctest::Approx(bb_max_x));
+    REQUIRE(max_y == doctest::Approx(bb_max_y));
+    REQUIRE(max_z == doctest::Approx(bb_max_z));
 }
 
 
