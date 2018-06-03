@@ -43,7 +43,6 @@ template <typename Float, typename interface=calico::math::StdTypeInterface<Floa
 class Plate {
 public:
     typedef int FaceId;
-    typedef int FaceIdIterator;
     typedef std::size_t VertexId;
     typedef Float FloatType;
     
@@ -150,8 +149,7 @@ public:
         max_z = _max_z;
     }
 
-    FaceIdIterator begin_face_id() const {return 0u;}
-    FaceIdIterator end_face_id() const {return _normal_x.size();}
+    FaceId index_to_face_id(std::size_t const index) const {return index;}
 
     Float x(FaceId id, VertexId corner) const {return _x[id*3+corner];}
     Float y(FaceId id, VertexId corner) const {return _y[id*3+corner];}

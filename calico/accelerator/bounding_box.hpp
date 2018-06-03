@@ -33,7 +33,7 @@
 #include <iostream>
 #include <memory>
 
-#include <stdlib.h> // for aligned_alloc
+#include <cstdlib> // for aligned_alloc
 
 namespace calico {
 namespace accelerator {
@@ -166,17 +166,17 @@ public:
                       count(count_) 
     {
         // Use the aligned_alloc function from C11 (/not/ C++11, just C11)
-        min_x = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
-        min_y = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
-        min_z = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+        min_x = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        min_y = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        min_z = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
 
-        max_x = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
-        max_y = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
-        max_z = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+        max_x = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        max_y = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        max_z = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
 
-        centroid_x = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
-        centroid_y = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
-        centroid_z = static_cast<Float*>(aligned_alloc(16, sizeof(Float)*count));
+        centroid_x = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        centroid_y = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        centroid_z = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
     }
 
     ~BoundingBoxes() {
@@ -221,19 +221,19 @@ std::unique_ptr<BoundingBoxes<typename MeshAdapter::FloatType>>
     auto bounds = 
         std::unique_ptr<BoundingBoxes<typename MeshAdapter::FloatType>>(
                 new BoundingBoxes<typename MeshAdapter::FloatType>(mesh.size()));
-    const typename MeshAdapter::FaceIdIterator last{mesh.end_face_id()};
-    for (typename MeshAdapter::FaceIdIterator i{mesh.begin_face_id()}; i != last; ++i) {
-        bounds->min_x[i] = FloatInterface::min(mesh.x(i, 0), FloatInterface::min(mesh.x(i, 1), mesh.x(i, 2)));
-        bounds->min_y[i] = FloatInterface::min(mesh.y(i, 0), FloatInterface::min(mesh.y(i, 1), mesh.y(i, 2)));
-        bounds->min_z[i] = FloatInterface::min(mesh.z(i, 0), FloatInterface::min(mesh.z(i, 1), mesh.z(i, 2)));
+    for (std::size_t i{0u}; i != mesh.size(); ++i) {
+        typename MeshAdapter::FaceId f{mesh.index_to_face_id(i)};
+        bounds->min_x[i] = FloatInterface::min(mesh.x(f, 0), FloatInterface::min(mesh.x(f, 1), mesh.x(f, 2)));
+        bounds->min_y[i] = FloatInterface::min(mesh.y(f, 0), FloatInterface::min(mesh.y(f, 1), mesh.y(f, 2)));
+        bounds->min_z[i] = FloatInterface::min(mesh.z(f, 0), FloatInterface::min(mesh.z(f, 1), mesh.z(f, 2)));
 
-        bounds->max_x[i] = FloatInterface::max(mesh.x(i, 0), FloatInterface::max(mesh.x(i, 1), mesh.x(i, 2)));
-        bounds->max_y[i] = FloatInterface::max(mesh.y(i, 0), FloatInterface::max(mesh.y(i, 1), mesh.y(i, 2)));
-        bounds->max_z[i] = FloatInterface::max(mesh.z(i, 0), FloatInterface::max(mesh.z(i, 1), mesh.z(i, 2)));
+        bounds->max_x[i] = FloatInterface::max(mesh.x(f, 0), FloatInterface::max(mesh.x(f, 1), mesh.x(f, 2)));
+        bounds->max_y[i] = FloatInterface::max(mesh.y(f, 0), FloatInterface::max(mesh.y(f, 1), mesh.y(f, 2)));
+        bounds->max_z[i] = FloatInterface::max(mesh.z(f, 0), FloatInterface::max(mesh.z(f, 1), mesh.z(f, 2)));
 
-        bounds->centroid_x[i] = (mesh.x(i, 0) + mesh.x(i, 1) + mesh.x(i, 2)) * one_third;
-        bounds->centroid_y[i] = (mesh.y(i, 0) + mesh.y(i, 1) + mesh.y(i, 2)) * one_third;
-        bounds->centroid_z[i] = (mesh.z(i, 0) + mesh.z(i, 1) + mesh.z(i, 2)) * one_third;
+        bounds->centroid_x[i] = (mesh.x(f, 0) + mesh.x(f, 1) + mesh.x(f, 2)) * one_third;
+        bounds->centroid_y[i] = (mesh.y(f, 0) + mesh.y(f, 1) + mesh.y(f, 2)) * one_third;
+        bounds->centroid_z[i] = (mesh.z(f, 0) + mesh.z(f, 1) + mesh.z(f, 2)) * one_third;
     }
 
     return std::move(bounds);
