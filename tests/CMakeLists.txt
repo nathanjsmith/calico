@@ -10,5 +10,6 @@ include_directories("${PROJECT_SOURCE_DIR}")
 enable_testing()
 
 add_test_executable(test_wavefront     wavefront.cpp)
+add_test_executable(test_wavefront_bvh wavefront_bvh.cpp)
 add_test_executable(test_plate         plate.cpp)
 add_test_executable(test_bounding_box  bounding_box.cpp)
