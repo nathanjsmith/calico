@@ -201,7 +201,7 @@ class MollerTrumboreContainmentTest
 {
 public:
     static
-    bool contains(const Mesh &mesh, const typename Mesh::FaceId &face,
+    bool contains(const Mesh &mesh, const std::size_t &face_index,
                   const Float &p_x, const Float &p_y, const Float &p_z)
     {
         // barycentric coordinates are defined by the u = area(A,B,P) / area(A,B,C)
@@ -210,22 +210,22 @@ public:
 
         // Get the area of the triangle we're testing and double it to make the
         // following calculations faster.
-        Float inverse_facet_area = Float(1.) / mesh.area(face);
+        Float inverse_facet_area = Float(1.) / mesh.area(face_index);
 
         // Find the area of triangle (A, B, P) and scale it by the area of the
         // whole parent triangle.  We use double the area because the length of the
         // cross-product is actually the area of the parallelogram, which is twice
         // the triangle area.
-        Float u = math::area(mesh.x(face, 0), mesh.y(face, 0), mesh.z(face, 0), 
-                             mesh.x(face, 1), mesh.y(face, 1), mesh.z(face, 1), 
+        Float u = math::area(mesh.x(face_index, 0), mesh.y(face_index, 0), mesh.z(face_index, 0), 
+                             mesh.x(face_index, 1), mesh.y(face_index, 1), mesh.z(face_index, 1), 
                              p_x, p_y, p_z) * inverse_facet_area;
 
         // Find the area of triangle (C, A, P) and scale it by the area of the
         // whole parent triangle.  We use double the area because the length of the
         // cross-product is actually the area of the parallelogram, which is twice
         // the triangle area.
-        Float v = math::area(mesh.x(face, 2), mesh.y(face, 2), mesh.z(face, 2), 
-                             mesh.x(face, 0), mesh.y(face, 0), mesh.z(face, 0), 
+        Float v = math::area(mesh.x(face_index, 2), mesh.y(face_index, 2), mesh.z(face_index, 2), 
+                             mesh.x(face_index, 0), mesh.y(face_index, 0), mesh.z(face_index, 0), 
                              p_x, p_y, p_z) * inverse_facet_area;
 
         Float w = Float(1) - u - v;
@@ -250,7 +250,7 @@ class PluckerContainmentTest
 {
 public:
     static
-    bool contains(const Mesh &mesh, const typename Mesh::FaceId &face,
+    bool contains(const Mesh &mesh, const std::size_t &face_index,
                   const Float &px, const Float &py, const Float &pz)
     {
         // barycentric coordinates are defined by the u = area(A,B,P) / area(A,B,C)
@@ -259,21 +259,21 @@ public:
 
         // Treat the point as the origin and translate the three corners
         // accordingly
-        const Float ax = mesh.x(face, 0) - px;
-        const Float ay = mesh.y(face, 0) - py;
-        const Float az = mesh.z(face, 0) - pz;
+        const Float ax = mesh.x(face_index, 0) - px;
+        const Float ay = mesh.y(face_index, 0) - py;
+        const Float az = mesh.z(face_index, 0) - pz;
 
-        const Float bx = mesh.x(face, 1) - px;
-        const Float by = mesh.y(face, 1) - py;
-        const Float bz = mesh.z(face, 1) - pz;
+        const Float bx = mesh.x(face_index, 1) - px;
+        const Float by = mesh.y(face_index, 1) - py;
+        const Float bz = mesh.z(face_index, 1) - pz;
 
-        const Float cx = mesh.x(face, 2) - px;
-        const Float cy = mesh.y(face, 2) - py;
-        const Float cz = mesh.z(face, 2) - pz;
+        const Float cx = mesh.x(face_index, 2) - px;
+        const Float cy = mesh.y(face_index, 2) - py;
+        const Float cz = mesh.z(face_index, 2) - pz;
 
         // Get the area of the triangle we're testing and double it to make the
         // following calculations faster.
-        const Float inverse_double_area = Float(1) / (mesh.area(face) * Float(2));
+        const Float inverse_double_area = Float(1) / (mesh.area(face_index) * Float(2));
 
         // Find the area of all three sub-triangles with P as a vertex.  Compute
         // the ratio of the sub-triangle areas against the whole triangle's area.

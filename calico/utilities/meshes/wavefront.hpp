@@ -256,19 +256,19 @@ public:
         max_z = _max_z;
     }
 
-    Float x(FaceId id, VertexId corner) const {return _x[_face[corner][id]];}
-    Float y(FaceId id, VertexId corner) const {return _y[_face[corner][id]];}
-    Float z(FaceId id, VertexId corner) const {return _z[_face[corner][id]];}
+    Float x(std::size_t index, VertexId corner) const {return _x.at(_face[corner].at(index));}
+    Float y(std::size_t index, VertexId corner) const {return _y.at(_face[corner].at(index));}
+    Float z(std::size_t index, VertexId corner) const {return _z.at(_face[corner].at(index));}
     
-    Float normal_x(FaceId id) const {return _normal_x[id];}
-    Float normal_y(FaceId id) const {return _normal_y[id];}
-    Float normal_z(FaceId id) const {return _normal_z[id];}
+    Float normal_x(std::size_t index) const {return _normal_x.at(index);}
+    Float normal_y(std::size_t index) const {return _normal_y.at(index);}
+    Float normal_z(std::size_t index) const {return _normal_z.at(index);}
 
-    Float d(FaceId id) const {return _d[id];}
+    Float d(std::size_t index) const {return _d.at(index);}
 
-    Float area(FaceId id) const {return _area[id];}
+    Float area(std::size_t index) const {return _area.at(index);}
 
-    FaceId size() const {return _count;}
+    std::size_t size() const {return _count;}
 
     /// Convert a face index into a face ID.
     FaceId index_to_face_id(std::size_t const index) const {return index;}

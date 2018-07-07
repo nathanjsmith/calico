@@ -91,8 +91,9 @@ public:
         face = Mesh::ray_miss_id_c;
         t    = limits::infinity();
 
-        for (typename Mesh::FaceId f = 0u; f < _mesh.size(); ++f) {
+        for (std::size_t face_index = 0u; face_index < _mesh.size(); ++face_index) {
 
+            typename Mesh::FaceId const f{_mesh.index_to_face_id(face_index)};
             if (f == ignore_face) {
                 continue;
             }
@@ -100,10 +101,10 @@ public:
             // If the ray lies in the plane, this should return Inf as the
             // intersection distance.  That will get filtered out in the
             // following tests.
-            Float tmp_t = math::ray_plane_intersection(_mesh.normal_x(f),
-                                                       _mesh.normal_y(f),
-                                                       _mesh.normal_z(f),
-                                                       _mesh.d(f),
+            Float tmp_t = math::ray_plane_intersection(_mesh.normal_x(face_index),
+                                                       _mesh.normal_y(face_index),
+                                                       _mesh.normal_z(face_index),
+                                                       _mesh.d(face_index),
                                                        start_x,
                                                        start_y,
                                                        start_z,
@@ -122,7 +123,7 @@ public:
                 Float tmp_hit_y = start_y + (direction_y * tmp_t);
                 Float tmp_hit_z = start_z + (direction_z * tmp_t);
 
-                if (Containment::contains(_mesh, f, tmp_hit_x, tmp_hit_y, tmp_hit_z)) {
+                if (Containment::contains(_mesh, face_index, tmp_hit_x, tmp_hit_y, tmp_hit_z)) {
                     hit_x = tmp_hit_x;
                     hit_y = tmp_hit_y;
                     hit_z = tmp_hit_z;
