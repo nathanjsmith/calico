@@ -40,16 +40,20 @@ template <typename Float,
 std::size_t compute_bin_id(
 */
 
+/// Find the minimum component of the 3-tuple x1, x2, x3
 template <typename Float>
 Float min_v(Float x1, Float x2, Float x3) {
     return std::min(x1, std::min(x2, x3));
 }
 
+/// Find the maximum component of the 3-tuple x1, x2, x3
 template <typename Float>
 Float max_v(Float x1, Float x2, Float x3) {
     return std::max(x1, std::max(x2, x3));
 }
 
+/// Compute the centroid of element index from the Mesh mesh and store the xyz
+/// 3-tuple into x, y and z
 template <typename Float, typename Mesh>
 void centroid(Mesh const &mesh, std::size_t index, Float &x, Float &y, Float &z) {
     constexpr Float third{Float(1.)/Float(3.)};
@@ -58,21 +62,17 @@ void centroid(Mesh const &mesh, std::size_t index, Float &x, Float &y, Float &z)
     z = (mesh.z(index, 0) + mesh.z(index, 1) + mesh.z(index, 2)) * third;
 }
 
-namespace bvh_wald_util {
-    template <typename T>
-    T* build_array(std::size_t count, T fill_value) {
-        T* a{new T[count]};
-        std::fill(a, a+count, fill_value);
-        return a;
-    }
-}
-
 
 /**
     Given a mesh and a containment test, this will iterate across all surfaces
     in the mesh and test first the plane in which the surface lies for
     intersection with the provided ray and then as to whether the intersection
     point is contained inside the bounds of the surface.
+
+    This Accelerator implements the algorithm described in:
+
+      Wald, Ingo. "On fast construction of SAH-based bounding volume
+      hierarchies." 2007 IEEE Symposium on Interactive Ray Tracing. IEEE, 2007.
 */
 template <typename Float, 
           typename Mesh, 
@@ -89,26 +89,27 @@ public:
         // 1. bounding box and centroid for each triangle (tb and c respectively)
         // 2. Bounding box for _all_ the triangles (vb, or voxel-bounds)
         // 3. Bounding box for _all_ the centroids (cb)
-        _triangle_min_x = bvh_wald_util::build_array<Float>(mesh.size(), limits::max());
-        _triangle_min_y = bvh_wald_util::build_array<Float>(mesh.size(), limits::max());
-        _triangle_min_z = bvh_wald_util::build_array<Float>(mesh.size(), limits::max());
+        _triangle_min_x.resize(mesh.size(), limits::max());
+        _triangle_min_y.resize(mesh.size(), limits::max());
+        _triangle_min_z.resize(mesh.size(), limits::max());
 
-        _triangle_max_x = bvh_wald_util::build_array<Float>(mesh.size(), limits::lowest());
-        _triangle_max_y = bvh_wald_util::build_array<Float>(mesh.size(), limits::lowest());
-        _triangle_max_z = bvh_wald_util::build_array<Float>(mesh.size(), limits::lowest());
+        _triangle_max_x.resize(mesh.size(), limits::lowest());
+        _triangle_max_y.resize(mesh.size(), limits::lowest());
+        _triangle_max_z.resize(mesh.size(), limits::lowest());
 
-        _centroid[0] = bvh_wald_util::build_array<Float>(mesh.size(), 0.);
-        _centroid[1] = bvh_wald_util::build_array<Float>(mesh.size(), 0.);
-        _centroid[2] = bvh_wald_util::build_array<Float>(mesh.size(), 0.);
+        _centroid[0].resize(mesh.size(), Float(0.));
+        _centroid[1].resize(mesh.size(), Float(0.));
+        _centroid[2].resize(mesh.size(), Float(0.));
 
-        _centroid_min_x = limits::max();
-        _centroid_min_y = limits::max();
-        _centroid_min_z = limits::max();
-        _centroid_max_x = limits::lowest();
-        _centroid_max_y = limits::lowest();
-        _centroid_max_z = limits::lowest();
+        _centroid_min[0] = limits::max();
+        _centroid_min[1] = limits::max();
+        _centroid_min[2] = limits::max();
+        _centroid_max[0] = limits::lowest();
+        _centroid_max[1] = limits::lowest();
+        _centroid_max[2] = limits::lowest();
 
-        for (std::size_t i{0u}; i < mesh.size(); ++i) {
+        std::size_t const mesh_size = mesh.size();
+        for (std::size_t i{0u}; i < mesh_size; ++i) {
             // Compute tb_i
             _triangle_min_x[i] = min_v(_mesh.x(i, 0), _mesh.x(i, 1), _mesh.x(i, 2));
             _triangle_max_x[i] = max_v(_mesh.x(i, 0), _mesh.x(i, 1), _mesh.x(i, 2));
@@ -128,54 +129,60 @@ public:
             _max_z = std::max(_triangle_max_z[i], _max_z);
 
             // Compute triangle's contribution to cb
-            _centroid_min_x = std::min(_triangle_min_x[i], _centroid_min_x);
-            _centroid_min_y = std::min(_triangle_min_y[i], _centroid_min_y);
-            _centroid_min_z = std::min(_triangle_min_z[i], _centroid_min_z);
+            _centroid_min[0] = std::min(_triangle_min_x[i], _centroid_min[0]);
+            _centroid_min[1] = std::min(_triangle_min_y[i], _centroid_min[1]);
+            _centroid_min[2] = std::min(_triangle_min_z[i], _centroid_min[2]);
 
-            _centroid_max_x = std::max(_triangle_max_x[i], _centroid_max_x);
-            _centroid_max_y = std::max(_triangle_max_y[i], _centroid_max_y);
-            _centroid_max_z = std::max(_triangle_max_z[i], _centroid_max_z);
+            _centroid_max[0] = std::max(_triangle_max_x[i], _centroid_max[0]);
+            _centroid_max[1] = std::max(_triangle_max_y[i], _centroid_max[1]);
+            _centroid_max[2] = std::max(_triangle_max_z[i], _centroid_max[2]);
         }
 
         // We need a continuous array of storage representing the indices of
         // all triangles.
-        triangle_indices = new std::size_t[mesh.size()];
-        std::iota(triangle_indices, triangle_indices+mesh.size(), std::size_t(0u));
+        triangle_indices.resize(mesh.size());
+        std::iota(std::begin(triangle_indices), std::end(triangle_indices), std::size_t(0u));
 
         // allocate space for the maximum number of nodes (2N-1).
 
         // First, bounding boxes for each node, initialized to be empty (min > max at extremes)
-        _node_box_min_x   = bvh_wald_util::build_array<Float>(mesh.size()*2u, limits::max());
-        _node_box_min_y   = bvh_wald_util::build_array<Float>(mesh.size()*2u, limits::max());
-        _node_box_min_z   = bvh_wald_util::build_array<Float>(mesh.size()*2u, limits::max());
-        _node_box_max_x   = bvh_wald_util::build_array<Float>(mesh.size()*2u, limits::lowest());
-        _node_box_max_y   = bvh_wald_util::build_array<Float>(mesh.size()*2u, limits::lowest());
-        _node_box_max_z   = bvh_wald_util::build_array<Float>(mesh.size()*2u, limits::lowest());
+        _node_box_min_x.resize(mesh.size()*2u, limits::max());
+        _node_box_min_y.resize(mesh.size()*2u, limits::max());
+        _node_box_min_z.resize(mesh.size()*2u, limits::max());
+        _node_box_max_x.resize(mesh.size()*2u, limits::lowest());
+        _node_box_max_y.resize(mesh.size()*2u, limits::lowest());
+        _node_box_max_z.resize(mesh.size()*2u, limits::lowest());
 
         // Next, the child nodes. If the child node is 0, then this is not a node, but a leaf.
-        _node_child_left  = bvh_wald_util::build_array<std::size_t>(mesh.size()*2u, std::size_t(0));
-        _node_child_right = bvh_wald_util::build_array<std::size_t>(mesh.size()*2u, std::size_t(0));
+        _node_child_left.resize(mesh.size()*2u, std::size_t(0));
+        _node_child_right.resize(mesh.size()*2u, std::size_t(0));
 
         // Finally, how many triangles are in this leaf? The element _start_triangle_index[n] 
         // has meaning only if _node_child_left[n] != 0
-        _start_triangle_index = bvh_wald_util::build_array<std::size_t>(mesh.size()*2u, std::size_t(0));
-        _triangle_count = bvh_wald_util::build_array<std::size_t>(mesh.size()*2u, std::size_t(0));
+        _start_triangle_index.resize(mesh.size()*2u, std::size_t(0));
+        _triangle_count.resize(mesh.size()*2u, std::size_t(0));
 
-        // TODO: partition triangles across bins
+        // Section 3.1, find the dimension in which the centroid bounding box
+        // is widest. That becomes our binning axis "k".
+        Float x_magnitude = _centroid_max[0] - _centroid_min[0];
+        Float y_magnitude = _centroid_max[1] - _centroid_min[1];
+        Float z_magnitude = _centroid_max[2] - _centroid_min[2];
+        if (x_magnitude > y_magnitude && x_magnitude > z_magnitude) {
+            _binning_axis = std::uint8_t(0);
+        }
+        else if (y_magnitude > z_magnitude) {
+            _binning_axis = std::uint8_t(1);
+        }
+        else {
+            _binning_axis = std::uint8_t(2);
+        }
+
+        // Section 3.3 Triangle-to-bin projection
+
+        
     }
 
     ~WaldBvh() {
-        delete[] _triangle_min_x;
-        delete[] _triangle_min_y;
-        delete[] _triangle_min_z;
-
-        delete[] _triangle_max_x;
-        delete[] _triangle_max_y;
-        delete[] _triangle_max_z;
-
-        delete[] _centroid[0];
-        delete[] _centroid[1];
-        delete[] _centroid[2];
     }
 
     /**
@@ -218,46 +225,51 @@ public:
         typename Mesh::FaceId const ignore_face{face};
     }
 
+    /// Compute the bin ID for a triangle i
+    std::size_t bin_id(std::size_t triangle_i) {
+        Float const k1 = K*(Float(1) - std::numeric_limits<Float>::epsilon()) / (_centroid_max[k] - _centroid_min[k]);
+        Float const k0 = _centroid_min[k];
+        return k1 * (_centroid[k][triangle_i] - k0);
+    }
+
 private:
     const Mesh &_mesh;
 
-    Float *_triangle_min_x; // O(N)
-    Float *_triangle_min_y; // O(N)
-    Float *_triangle_min_z; // O(N)
-    Float *_triangle_max_x; // O(N)
-    Float *_triangle_max_y; // O(N)
-    Float *_triangle_max_z; // O(N)
+    std::vector<Float> _triangle_min_x; // Component of per-triangle bounds (tb)
+    std::vector<Float> _triangle_min_y; // Component of per-triangle bounds (tb)
+    std::vector<Float> _triangle_min_z; // Component of per-triangle bounds (tb)
+    std::vector<Float> _triangle_max_x; // Component of per-triangle bounds (tb)
+    std::vector<Float> _triangle_max_y; // Component of per-triangle bounds (tb)
+    std::vector<Float> _triangle_max_z; // Component of per-triangle bounds (tb)
 
-    Float *_centroid[3];    // O(N)
+    std::vector<Float> _centroid[3];    // Triangle centroid (c)
 
-    Float _min_x;
-    Float _min_y;
-    Float _min_z;
-    Float _max_x;
-    Float _max_y;
-    Float _max_z;
+    Float _min_x; ///< Component of bounding box for all triangles (vb)
+    Float _min_y; ///< Component of bounding box for all triangles (vb)
+    Float _min_z; ///< Component of bounding box for all triangles (vb)
+    Float _max_x; ///< Component of bounding box for all triangles (vb)
+    Float _max_y; ///< Component of bounding box for all triangles (vb)
+    Float _max_z; ///< Component of bounding box for all triangles (vb)
 
-    Float _centroid_min_x;
-    Float _centroid_min_y;
-    Float _centroid_min_z;
-    Float _centroid_max_x;
-    Float _centroid_max_y;
-    Float _centroid_max_z;
+    Float _centroid_min[3]; ///< Component of bounding box about centroids (cb)
+    Float _centroid_max[3]; ///< Component of bounding box about centroids (cb)
 
-    std::size_t *triangle_indices;
+    std::vector<std::size_t> triangle_indices;
 
-    Float *_node_box_min_x;
-    Float *_node_box_min_y;
-    Float *_node_box_min_z;
-    Float *_node_box_max_x;
-    Float *_node_box_max_y;
-    Float *_node_box_max_z;
+    std::vector<Float> _node_box_min_x;
+    std::vector<Float> _node_box_min_y;
+    std::vector<Float> _node_box_min_z;
+    std::vector<Float> _node_box_max_x;
+    std::vector<Float> _node_box_max_y;
+    std::vector<Float> _node_box_max_z;
 
-    std::size_t *_node_child_left;
-    std::size_t *_node_child_right;
+    std::vector<std::size_t> _node_child_left;
+    std::vector<std::size_t> _node_child_right;
 
-    std::size_t *_start_triangle_index;
-    std::size_t *_triangle_count;
+    std::vector<std::size_t> _start_triangle_index;
+    std::vector<std::size_t> _triangle_count;
+
+    std::uint8_t _binning_axis; ///< Axis along which we'll bin the BVH (k)
 };
 
 }// end namespace calico::accelerator
