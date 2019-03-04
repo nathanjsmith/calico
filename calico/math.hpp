@@ -36,11 +36,14 @@ namespace math {
   Interface to the routines in std:: that we need for running the routines in
   accelerator. It provides:
 
-    max_infinity   -- A routine that returns +infinity
-    min_infinity   -- A routine that returns -infinity
-    max            -- A routine that returns the larger of a and b
-    min            -- A routine that returns the smaller of a and b
-    sqrt           -- A routine that returns sqrt(a)
+    max_infinity() -- A routine that returns +infinity
+    min_infinity() -- A routine that returns -infinity
+    max()          -- A routine that returns the largest value storable in Float
+    lowest()       -- A routine that returns the lowest value storable in Float
+
+    max(a,b)       -- A routine that returns the larger of a and b
+    min(a,b)       -- A routine that returns the smaller of a and b
+    sqrt(a)        -- A routine that returns sqrt(a)
 
   This interface abstracts away details of the type being used. If you are
   using a non-standard type with Calico, you will need to provide an
@@ -57,6 +60,12 @@ struct StdTypeInterface {
   inline constexpr static Float max_infinity() {
     return std::numeric_limits<Float>::infinity();
   }
+
+  // Largest number that can be represented using this type
+  inline constexpr static Float max() {return std::numeric_limits<Float>::max();}
+
+  // Lowest number that can be represented using this type
+  inline constexpr static Float lowest() {return std::numeric_limits<Float>::lowest();}
   
   inline static Float min(const Float &a, const Float &b) {return std::min(a, b);}
   inline static Float max(const Float &a, const Float &b) {return std::max(a, b);}

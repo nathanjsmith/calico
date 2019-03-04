@@ -26,7 +26,7 @@
 #include <calico/math.hpp>
 #include <calico/input/soa_input.hpp>
 #include <calico/result/soa_result.hpp>
-#include <calico/accelerator/wald_bvh.hpp>
+#include <calico/accelerator/simple_bvh.hpp>
 #include <calico/utilities/meshes/wavefront.hpp>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
@@ -34,13 +34,13 @@
 
 #include <iostream>
 
-TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh; Find the intersection using Plucker") {
+TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh too small to subdivide; Find the intersection using Plucker") {
 
   typedef double Float;
   typedef calico::utilities::meshes::Wavefront<Float> Mesh;
   typedef calico::math::PluckerContainmentTest<Float, Mesh> Containment;
   // typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
-  typedef calico::accelerator::WaldBvh<Float, Mesh, Containment> Accelerator;
+  typedef calico::accelerator::SimpleBvh<Float, Mesh, Containment> Accelerator;
 
   std::stringstream plate_string;
   plate_string << "v -1 -1  3\n"
@@ -89,12 +89,12 @@ TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh; Find the inter
 //=============================================================================
 
 
-TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh; Find the intersection using Moller-Trumbore") {
+TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh too small to subdivide; Find the intersection using Moller-Trumbore") {
 
   typedef double Float;
   typedef calico::utilities::meshes::Wavefront<Float> Mesh;
   typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
-  typedef calico::accelerator::WaldBvh<Float, Mesh, Containment> Accelerator;
+  typedef calico::accelerator::SimpleBvh<Float, Mesh, Containment> Accelerator;
 
   std::stringstream plate_string;
   plate_string << "v -1 -1  3\n"
