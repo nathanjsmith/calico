@@ -38,7 +38,7 @@ namespace math {
 
     max_infinity() -- A routine that returns +infinity
     min_infinity() -- A routine that returns -infinity
-    max()          -- A routine that returns the largest value storable in Float
+    greatest()     -- A routine that returns the largest value storable in Float
     lowest()       -- A routine that returns the lowest value storable in Float
 
     max(a,b)       -- A routine that returns the larger of a and b
@@ -62,7 +62,7 @@ struct StdTypeInterface {
   }
 
   // Largest number that can be represented using this type
-  inline constexpr static Float max() {return std::numeric_limits<Float>::max();}
+  inline constexpr static Float greatest() {return std::numeric_limits<Float>::max();}
 
   // Lowest number that can be represented using this type
   inline constexpr static Float lowest() {return std::numeric_limits<Float>::lowest();}

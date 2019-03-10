@@ -63,12 +63,16 @@ String trim(const String &input) {
     
     This simplistic loader is not general purpose as it does not handle
     anything with regards to objects or groups and ignores normals specified in
-    the mesh file (both on the face and on vertices). The whole mesh is loaded
-    into a single object and exposed through the standard Mesh interface. It
-    automatically computes surface normals and surface area of all facets
-    loaded. It also splits Quad elements into a pair of Tri-elements. Finally,
-    it internally uses 0 based vertex counting, so converts Wavefront OBJ's 1
-    based counting to 0 based during the load process.
+    the mesh file (both on the face and on vertices). Faces with more than
+    three vertices are supported, but always constructed as a triangle fan (so
+    must be convex). Faces with vertex normal indices are not supported.
+    
+    The whole mesh is loaded into a single object and exposed through the
+    standard Mesh interface. It automatically computes surface normals and
+    surface area of all facets loaded. It also splits Quad elements into a pair
+    of Tri-elements. Finally, it internally uses 0 based vertex counting, so
+    converts Wavefront OBJ's 1 based counting to 0 based during the load
+    process.
 */
 template <typename Float>
 class Wavefront {
@@ -126,7 +130,6 @@ public:
                 std::string face_indices = line.substr(1);
                 int a{},b{},c{},d{};
                 std::size_t offset{0}, j{0};
-                bool is_quad{false};
                 try {
                     a = std::stoi(face_indices, &j);
                     offset += j;
@@ -142,16 +145,6 @@ public:
                     throw ParseError(err.str());
                 }
 
-                // Is this a quad?
-                try {
-                    // We could read a 4th vetex index, so yes, it's a quad.
-                    d = std::stoi(face_indices.substr(offset), &j);
-                    is_quad = true;
-                }
-                catch (const std::exception &e) {
-                    // That's ok. This isn't a quad, so just ignore this
-                    // exception.
-                }
                 if (a < 0) {
                     a = _x.size() + a;
                 } else {
@@ -167,20 +160,37 @@ public:
                 } else {
                     c -= 1;
                 }
-                if (d < 0) {
-                    d = _x.size() + d;
-                } else {
-                    d -= 1;
-                }
 
                 _face[0].push_back(a);
                 _face[1].push_back(b);
                 _face[2].push_back(c);
 
-                if (is_quad) {
-                    _face[0].push_back(c);
-                    _face[1].push_back(d);
-                    _face[2].push_back(a);
+                // I don't know if this is true in general, but I'm assuming
+                // that polygons are always convex and can be treated as
+                // triangle fans.
+                while (true) {
+                    b = c;
+
+                    // Are there more vertices in this face?
+                    try {
+                        // We could read another vetex index, so yes, it's a fan.
+                        c = std::stoi(face_indices.substr(offset), &j);
+                        offset += j;
+                    }
+                    catch (const std::exception &e) {
+                        // That's ok. This isn't a quad, so just ignore this
+                        // exception.
+                        break;
+                    }
+                    if (c < 0) {
+                        c = _x.size() + c;
+                    } else {
+                        c -= 1;
+                    }
+
+                    _face[0].push_back(a);
+                    _face[1].push_back(b);
+                    _face[2].push_back(c);
                 }
             }
             else if (line.substr(0, 1) == "#") {

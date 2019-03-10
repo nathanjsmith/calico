@@ -26,6 +26,7 @@
 #define __CALICO__ACCELERATOR__SIMPLE_BVH__HPP__
 
 #include <calico/math.hpp>
+#include <calico/accelerator/bounding_box.hpp>
 
 namespace calico {
 namespace accelerator {
@@ -77,9 +78,9 @@ public:
         // 1. bounding box and centroid for each triangle (tb and c respectively)
         // 2. Bounding box for _all_ the triangles (vb, or voxel-bounds)
         // 3. Bounding box for _all_ the centroids (cb)
-        _triangle_min_x.resize(mesh.size(), FloatMeta::max());
-        _triangle_min_y.resize(mesh.size(), FloatMeta::max());
-        _triangle_min_z.resize(mesh.size(), FloatMeta::max());
+        _triangle_min_x.resize(mesh.size(), FloatMeta::greatest());
+        _triangle_min_y.resize(mesh.size(), FloatMeta::greatest());
+        _triangle_min_z.resize(mesh.size(), FloatMeta::greatest());
 
         _triangle_max_x.resize(mesh.size(), FloatMeta::lowest());
         _triangle_max_y.resize(mesh.size(), FloatMeta::lowest());
@@ -111,9 +112,9 @@ public:
         // of the whole mesh
         mesh.bounding_box(_nodes[0u].min[0], _nodes[0u].min[1], _nodes[0u].min[2],
                           _nodes[0u].max[0], _nodes[0u].max[1], _nodes[0u].max[2]);
-        _nodes[0u].leaf = true;
+        _nodes[0u].leaf  = true;
         _nodes[0u].start = 0u;
-        _nodes[0u].count = mesh.size();
+        _nodes[0u].stop  = mesh.size();
         _next_available_node = 2u;
 
         recursive_subdivide(0u);
@@ -146,7 +147,8 @@ public:
         @param face         Id of the face on which the closest intersection
                             was discovered (output)
         @param t            Distance along the path that the intersection 
-                            is found (output)
+                            is found. Will be set to FloatMeta::greatest() if no 
+                            intersection is found (output)
         @param hit_x        X-component of the ray intersection (output)
         @param hit_y        Y-component of the ray intersection (output)
         @param hit_z        Z-component of the ray intersection (output)
@@ -160,18 +162,38 @@ public:
                            typename Mesh::FaceId &face, Float &t, 
                            Float &hit_x, Float &hit_y, Float &hit_z)
     {
+        Float min_t = 0., max_t = FloatMeta::greatest();
         typename Mesh::FaceId const ignore_face{face};
+        face = Mesh::ray_miss_id_c;
+        t = FloatMeta::greatest();
+
+        // Pre-compute these to accelerate bounding box calculations
+        Float inverse_direction_x{Float(1) / direction_x};
+        Float inverse_direction_y{Float(1) / direction_y};
+        Float inverse_direction_z{Float(1) / direction_z};
+        recursive_find_intersection(start_x, start_y, start_z,
+                          direction_x, direction_y, direction_z, 
+                          inverse_direction_x, inverse_direction_y, inverse_direction_z, 
+                          0u, ignore_face, face, min_t, max_t, hit_x, hit_y, hit_z);
+        if (face != Mesh::ray_miss_id_c) {
+            t = min_t;
+        }
     }
 
 private:
+
+
     struct Node {
         std::size_t start; ///< If leaf, index of first triangle in the node
                            ///< Else, index of left child; right child at start+1
-        std::size_t count; ///< If leaf, number of children
-                           ///< Else, not used
+        std::size_t stop;  ///< If leaf, terminating index of children (like
+                           ///< std::vector::end(). supports loops of i =
+                           ///< start; i < stop; ++i); Else, index of right child.
         bool leaf;         ///< True, Node is a leaf; else node in BVH
         Float min[3];      ///< AABB min of elements in the node
         Float max[3];      ///< AABB max of elements in the node
+
+        std::size_t count() const {return stop - start;}
     };
 
     /**
@@ -184,7 +206,7 @@ private:
     */
     void recursive_subdivide(std::size_t node_index)
     {
-        if (_nodes[node_index].count <= std::size_t(4)) {
+        if (_nodes[node_index].count() <= std::size_t(4)) {
             // Don't subdivide.
             return;
         }
@@ -213,9 +235,9 @@ private:
         // TODO: I'm sure there's something really simple we can do to avoid
         //       making this copy, but for my first pass I'm going to just do
         //       this for the simplicity and ensure I get the expected outcome.
-        std::vector<std::size_t> old_triangle_indices(_nodes[node_index].count);
+        std::vector<std::size_t> old_triangle_indices(_nodes[node_index].count());
         std::copy(_triangle_indices.begin() + _nodes[node_index].start, // start index
-                  _triangle_indices.begin() + _nodes[node_index].count, // stop index
+                  _triangle_indices.begin() + _nodes[node_index].count(), // stop index
                   old_triangle_indices.begin());
 
         // Initialize two new leaf nodes that we'll made children after
@@ -223,17 +245,17 @@ private:
         std::size_t left_node = _next_available_node++;
         std::size_t right_node = _next_available_node++;
         _nodes[left_node].leaf = true;
-        _nodes[left_node].min[0] = FloatMeta::max();
-        _nodes[left_node].min[1] = FloatMeta::max();
-        _nodes[left_node].min[2] = FloatMeta::max();
+        _nodes[left_node].min[0] = FloatMeta::greatest();
+        _nodes[left_node].min[1] = FloatMeta::greatest();
+        _nodes[left_node].min[2] = FloatMeta::greatest();
         _nodes[left_node].max[0] = FloatMeta::lowest();
         _nodes[left_node].max[1] = FloatMeta::lowest();
         _nodes[left_node].max[2] = FloatMeta::lowest();
 
         _nodes[right_node].leaf = true;
-        _nodes[right_node].min[0] = FloatMeta::max();
-        _nodes[right_node].min[1] = FloatMeta::max();
-        _nodes[right_node].min[2] = FloatMeta::max();
+        _nodes[right_node].min[0] = FloatMeta::greatest();
+        _nodes[right_node].min[1] = FloatMeta::greatest();
+        _nodes[right_node].min[2] = FloatMeta::greatest();
         _nodes[right_node].max[0] = FloatMeta::lowest();
         _nodes[right_node].max[1] = FloatMeta::lowest();
         _nodes[right_node].max[2] = FloatMeta::lowest();
@@ -241,7 +263,7 @@ private:
         // Sort the triangles to the left/right of the split point
         std::size_t const count = old_triangle_indices.size();
         std::size_t left_index{_nodes[node_index].start};
-        std::size_t right_index{_nodes[node_index].count-1};
+        std::size_t right_index{_nodes[node_index].count()-1};
         std::size_t left_count{0};
         std::size_t right_count{0};
         std::size_t stored_node{0};
@@ -283,28 +305,133 @@ private:
             _next_available_node -= std::size_t(2);
         }
         else {
+            // Update the start/stop indices
+            _nodes[left_node].start = _nodes[node_index].start;
+            _nodes[left_node].stop  = _nodes[node_index].start + left_count;
+
+            _nodes[right_node].start = _nodes[node_index].start + left_count;
+            _nodes[right_node].stop  = _nodes[node_index].stop;
+
             // Update the node we're subdividing to indicate it isn't a leaf,
             // but a node
             _nodes[node_index].leaf = false;
             _nodes[node_index].start = left_node;
-            _nodes[node_index].count = 0u;
-
-            // Update the start/stop indices
-            _nodes[left_node].start = _nodes[node_index].start;
-            _nodes[left_node].count = left_count;
-
-            _nodes[right_node].start = left_index;
-            _nodes[right_node].count = right_count;
+            _nodes[node_index].stop  = right_node;
 
             // Subdivide the left and right halves
             recursive_subdivide(left_index);
             recursive_subdivide(right_index);
         }
     }
+    
+    /// Internal search of nodes for intersections
+    void recursive_find_intersection(
+                           const Float start_x, 
+                           const Float start_y, 
+                           const Float start_z,
+                           const Float direction_x, 
+                           const Float direction_y, 
+                           const Float direction_z,
+                           const Float inverse_direction_x, 
+                           const Float inverse_direction_y, 
+                           const Float inverse_direction_z,
+                           const std::size_t node_id,
+                           typename Mesh::FaceId const ignore_face,
+                           typename Mesh::FaceId &face, 
+                           Float &min_t, Float &max_t,
+                           Float &hit_x, Float &hit_y, Float &hit_z)
+    {
+        // Should we explore this node?
+        Float local_min_t = 0., local_max_t = FloatMeta::greatest();
+        if (!calico::accelerator::intersects<Float, FloatMeta>(
+                start_x, start_y, start_z,
+                direction_x, direction_y, direction_z,
+                inverse_direction_x, inverse_direction_y, inverse_direction_z,
+                _nodes[node_id].min[0], _nodes[node_id].min[1], _nodes[node_id].min[2], 
+                _nodes[node_id].max[0], _nodes[node_id].max[1], _nodes[node_id].max[2], 
+                local_min_t, local_max_t))
+        {
+            return;
+        }
+        if (local_min_t > min_t) {
+            // It's a candidate, but the closest hit possible is further away
+            // than the closest hit found thus far. Ignore this box.
+            return;
+        }
 
+        // Yes, this node is a potential hit candidate.  Is it a leaf node?
+        if (_nodes[node_id].leaf) {
+            // Leaf node. Search the node's triangles for an intersection
+            for (std::size_t i{_nodes[node_id].start}; i < _nodes[node_id].stop; ++i) {
+                std::size_t const face_index{_triangle_indices[i]};
+                typename Mesh::FaceId const f{_mesh.index_to_face_id(face_index)};
+                if (f == ignore_face) {
+                    continue;
+                }
+
+                // If the ray lies in the plane, this should return Inf as the
+                // intersection distance.  That will get filtered out in the
+                // following tests.
+                Float tmp_t = math::ray_plane_intersection(_mesh.normal_x(face_index),
+                                                           _mesh.normal_y(face_index),
+                                                           _mesh.normal_z(face_index),
+                                                           _mesh.d(face_index),
+                                                           start_x,
+                                                           start_y,
+                                                           start_z,
+                                                           direction_x,
+                                                           direction_y,
+                                                           direction_z);
+
+                // Only keep hits in front of the start point.  Only calculate the
+                // intersection point if the hit distance is better than our
+                // previous best result.
+                if (Float(0.) < tmp_t && tmp_t <= min_t) {
+                    // This is closer than the closest we've found yet. Make
+                    // sure the intersection is inside of the triangle.
+                    Float tmp_hit_x = start_x + (direction_x * tmp_t);
+                    Float tmp_hit_y = start_y + (direction_y * tmp_t);
+                    Float tmp_hit_z = start_z + (direction_z * tmp_t);
+
+                    if (Containment::contains(_mesh, face_index, tmp_hit_x, tmp_hit_y, tmp_hit_z))
+                    {
+                        hit_x = tmp_hit_x;
+                        hit_y = tmp_hit_y;
+                        hit_z = tmp_hit_z;
+                        face  = f;
+                        min_t = tmp_t;
+                    }
+                }
+            }// end loop over triangles in this node
+        }// end if node is leaf
+        else {
+            // This node is the parent of two more bounding boxes.
+            recursive_find_intersection(start_x, start_y, start_z,
+                                        direction_x, direction_y, direction_z,
+                                        inverse_direction_x, inverse_direction_y, inverse_direction_z,
+                                        _nodes[node_id].start, ignore_face, face, 
+                                        local_min_t, local_max_t,
+                                        hit_x, hit_y, hit_z);
+
+            recursive_find_intersection(start_x, start_y, start_z,
+                                        direction_x, direction_y, direction_z,
+                                        inverse_direction_x, inverse_direction_y, inverse_direction_z,
+                                        _nodes[node_id].stop, ignore_face, face, 
+                                        local_min_t, local_max_t,
+                                        hit_x, hit_y, hit_z);
+        }
+    }
+
+    /// Reference to the Mesh we're accelerating search
     Mesh const &_mesh;
 
+    /// All of the BVH nodes (and leafs) in the BVH tree
     std::vector<Node> _nodes;
+
+    // TODO: Would the bounding boxes be more efficiently accessed as a
+    //       contiguous array of 6 values? I.e. is AoS better than SoA for
+    //       bounding box storage/access? I think it might be so that it
+    //       occupies one cache line, not six.
 
     std::vector<Float> _triangle_min_x; ///< Component of per-triangle bounds (tb)
     std::vector<Float> _triangle_min_y; ///< Component of per-triangle bounds (tb)
@@ -315,7 +442,8 @@ private:
 
     std::vector<Float> _centroid[3];    // Triangle centroid (c)
 
-    std::vector<std::size_t> _triangle_indices;
+    /// The nodes point to these indices. The indices point to triangles in the Mesh
+    std::vector<std::size_t> _triangle_indices; 
 
     std::size_t _next_available_node; ///< Next available node index
 };
