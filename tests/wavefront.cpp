@@ -27,7 +27,7 @@
 #include <calico/input/soa_input.hpp>
 #include <calico/result/soa_result.hpp>
 #include <calico/accelerator/brute_force.hpp>
-#include <calico/utilities/meshes/wavefront.hpp>
+#include <calico/utilities/meshes/wavefront_soa.hpp>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
@@ -37,7 +37,7 @@
 TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh; Find the intersection using Plucker") {
 
   typedef double Float;
-  typedef calico::utilities::meshes::Wavefront<Float> Mesh;
+  typedef calico::utilities::meshes::WavefrontSoA<Float> Mesh;
   typedef calico::math::PluckerContainmentTest<Float, Mesh> Containment;
   // typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
   typedef calico::accelerator::BruteForce<Float, Mesh, Containment> Accelerator;
@@ -92,7 +92,7 @@ TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh; Find the inter
 TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh; Find the intersection using Moller-Trumbore") {
 
   typedef double Float;
-  typedef calico::utilities::meshes::Wavefront<Float> Mesh;
+  typedef calico::utilities::meshes::WavefrontSoA<Float> Mesh;
   typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
   typedef calico::accelerator::BruteForce<Float, Mesh, Containment> Accelerator;
 

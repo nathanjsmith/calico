@@ -22,40 +22,22 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#ifndef __CALICO__UTILITIES__MESHES__WAVEFRONT__HPP__
-#define __CALICO__UTILITIES__MESHES__WAVEFRONT__HPP__
+#ifndef __CALICO__UTILITIES__MESHES__WAVEFRONT_AOS__HPP__
+#define __CALICO__UTILITIES__MESHES__WAVEFRONT_AOS__HPP__
 
 #include <calico/math.hpp>
+#include <calico/utilities/meshes/wavefront_soa.hpp>
 
 #include <vector>
 #include <iostream>
 #include <exception>
 #include <sstream>
 #include <string>
+#include <cstdint>
 
 namespace calico {
 namespace utilities {
 namespace meshes {
-
-class ParseError : public std::exception {
-public:
-    ParseError(const std::string &err) : _what(err) {}
-    virtual const char* what() const noexcept {return _what.c_str();}
-private:
-    std::string _what;
-};
-
-/// Strip all leading and trailing spaces
-template <typename String>
-String trim(const String &input) {
-    size_t start = input.find_first_not_of(" \t");
-    size_t stop = input.find_last_not_of(" \t\n\r");
-    if (stop - start) {
-      return input.substr(start, stop-start+1);
-    }
-    return input;
-}
-
 
 /**
     This Wavefront OBJ loader follows the interface requirements of the Mesh
@@ -73,17 +55,20 @@ String trim(const String &input) {
     of Tri-elements. Finally, it internally uses 0 based vertex counting, so
     converts Wavefront OBJ's 1 based counting to 0 based during the load
     process.
+
+    This class lays out its internal data structures using Array of Structures
+    (AoS). For a Structure of Arrays (SoA) alternative, see WavefrontSoA.
 */
 template <typename Float>
-class Wavefront {
+class WavefrontAoS {
 public:
-    typedef int FaceId;
+    typedef std::int32_t FaceId;
     typedef std::size_t VertexId;
     typedef Float FloatType;
     
     static const FaceId ray_miss_id_c = -1;
 
-    Wavefront(std::istream &input_stream) {
+    WavefrontAoS(std::istream &input_stream) {
 
         std::size_t line_number(0u);
         while (input_stream.good()) {
@@ -92,13 +77,14 @@ public:
             line = trim(line);
             line_number += 1u;
             if (line.substr(0,2) == "v ") {
+                Float x{},y{},z{};
                 // Parse the rest of the line as a vertex
                 std::string vertex_coordinates = line.substr(1);
                 std::size_t i(0u);
                 std::size_t j(0u);
 
                 try {
-                    _x.push_back(std::stod(vertex_coordinates, &i));
+                    x = std::stod(vertex_coordinates, &i);
                 }
                 catch (const std::exception &e) {
                     std::stringstream err;
@@ -107,7 +93,7 @@ public:
                 }
 
                 try {
-                    _y.push_back(std::stod(vertex_coordinates.substr(i), &j));
+                    y = std::stod(vertex_coordinates.substr(i), &j);
                     i += j;
                 }
                 catch (const std::exception &e) {
@@ -117,7 +103,7 @@ public:
                 }
 
                 try {
-                    _z.push_back(std::stod(vertex_coordinates.substr(i), &j));
+                    z = std::stod(vertex_coordinates.substr(i), &j);
                     i += j;
                 }
                 catch (const std::exception &e) {
@@ -125,10 +111,12 @@ public:
                     err << "Invalid Z vertex on line " << line_number;
                     throw ParseError(err.str());
                 }
+
+                _vertices.push_back({x,y,z});
             }
             else if (line.substr(0,2) == "f ") {
                 std::string face_indices = line.substr(1);
-                int a{},b{},c{},d{};
+                std::int32_t a{},b{},c{},d{};
                 std::size_t offset{0}, j{0};
                 try {
                     a = std::stoi(face_indices, &j);
@@ -146,24 +134,22 @@ public:
                 }
 
                 if (a < 0) {
-                    a = _x.size() + a;
+                    a = _vertices.size() + a;
                 } else {
                     a -= 1;
                 }
                 if (b < 0) {
-                    b = _x.size() + b;
+                    b = _vertices.size() + b;
                 } else {
                     b -= 1;
                 }
                 if (c < 0) {
-                    c = _x.size() + c;
+                    c = _vertices.size() + c;
                 } else {
                     c -= 1;
                 }
 
-                _face[0].push_back(a);
-                _face[1].push_back(b);
-                _face[2].push_back(c);
+                _faces.push_back({a,b,c});
 
                 // I don't know if this is true in general, but I'm assuming
                 // that polygons are always convex and can be treated as
@@ -183,14 +169,12 @@ public:
                         break;
                     }
                     if (c < 0) {
-                        c = _x.size() + c;
+                        c = _vertices.size() + c;
                     } else {
                         c -= 1;
                     }
 
-                    _face[0].push_back(a);
-                    _face[1].push_back(b);
-                    _face[2].push_back(c);
+                    _faces.push_back({a,b,c});
                 }
             }
             else if (line.substr(0, 1) == "#") {
@@ -205,26 +189,23 @@ public:
             }
         }
 
-        _count = _face[0].size();
-        _normal_x.resize(_count);
-        _normal_y.resize(_count);
-        _normal_z.resize(_count);
-        _d.resize(_count);
-        _area.resize(_count);
+        _count = _faces.size();
+        _planes.resize(_count);
+        _areas.resize(_count);
 
         for (FaceId i = 0u; i < _count; ++i) {
             // Automatically compute the normal and d for the triangle
             math::cross(x(i,2) - x(i,1), y(i,2) - y(i,1), z(i,2) - z(i,1),
                         x(i,0) - x(i,1), y(i,0) - y(i,1), z(i,0) - z(i,1),
-                        _normal_x[i], _normal_y[i], _normal_z[i]);
-            math::normalize(_normal_x[i], _normal_y[i], _normal_z[i]);
+                        _planes[i].x, _planes[i].y, _planes[i].z);
+            math::normalize(_planes[i].x, _planes[i].y, _planes[i].z);
 
-            _d[i] = math::dot(x(i,0), y(i,0), z(i,0),
-                             _normal_x[i], _normal_y[i], _normal_z[i]);
+            _planes[i].d = math::dot(x(i,0), y(i,0), z(i,0),
+                                     _planes[i].x, _planes[i].y, _planes[i].z);
 
-            _area[i] = math::area(x(i,0), y(i,0), z(i,0),
-                                  x(i,1), y(i,1), z(i,1),
-                                  x(i,2), y(i,2), z(i,2));
+            _areas[i] = math::area(x(i,0), y(i,0), z(i,0),
+                                   x(i,1), y(i,1), z(i,1),
+                                   x(i,2), y(i,2), z(i,2));
 
             // Now update the bounding box
             _min_x = std::min(x(i, 0), _min_x);
@@ -266,17 +247,16 @@ public:
         max_z = _max_z;
     }
 
-    Float x(std::size_t index, VertexId corner) const {return _x.at(_face[corner].at(index));}
-    Float y(std::size_t index, VertexId corner) const {return _y.at(_face[corner].at(index));}
-    Float z(std::size_t index, VertexId corner) const {return _z.at(_face[corner].at(index));}
+    Float x(std::size_t index, VertexId corner) const {return _vertices.at(_faces.at(index)[corner]).x;}
+    Float y(std::size_t index, VertexId corner) const {return _vertices.at(_faces.at(index)[corner]).y;}
+    Float z(std::size_t index, VertexId corner) const {return _vertices.at(_faces.at(index)[corner]).z;}
     
-    Float normal_x(std::size_t index) const {return _normal_x.at(index);}
-    Float normal_y(std::size_t index) const {return _normal_y.at(index);}
-    Float normal_z(std::size_t index) const {return _normal_z.at(index);}
+    Float normal_x(std::size_t index) const {return _planes.at(index).x;}
+    Float normal_y(std::size_t index) const {return _planes.at(index).y;}
+    Float normal_z(std::size_t index) const {return _planes.at(index).z;}
+    Float d(std::size_t index) const {return _planes.at(index).d;}
 
-    Float d(std::size_t index) const {return _d.at(index);}
-
-    Float area(std::size_t index) const {return _area.at(index);}
+    Float area(std::size_t index) const {return _areas.at(index);}
 
     std::size_t size() const {return _count;}
 
@@ -284,19 +264,21 @@ public:
     FaceId index_to_face_id(std::size_t const index) const {return index;}
 
 private:
-    std::vector<Float> _normal_x;
-    std::vector<Float> _normal_y;
-    std::vector<Float> _normal_z;
+    struct Vertex {
+        Float x,y,z;
+    };
+    struct Plane {
+        Float x,y,z,d;
+    };
+    struct Face {
+        std::int32_t vertex_index[3];
+        std::size_t operator[](std::size_t const i) {return vertex_index[i];}
+    };
 
-    std::vector<Float> _d;
-
-    std::vector<Float> _x;
-    std::vector<Float> _y;
-    std::vector<Float> _z;
-
-    std::vector<Float> _face[3];
-
-    std::vector<Float> _area;
+    std::vector<Plane>  _planes;
+    std::vector<Vertex> _vertices;
+    std::vector<Face>   _faces;
+    std::vector<Float>  _areas;
 
     Float _min_x;
     Float _min_y;

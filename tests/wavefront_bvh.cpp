@@ -27,7 +27,8 @@
 #include <calico/input/soa_input.hpp>
 #include <calico/result/soa_result.hpp>
 #include <calico/accelerator/simple_bvh.hpp>
-#include <calico/utilities/meshes/wavefront.hpp>
+#include <calico/utilities/meshes/wavefront_soa.hpp>
+#include <calico/utilities/meshes/wavefront_aos.hpp>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
@@ -37,7 +38,7 @@
 TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh too small to subdivide; Find the intersection using Plucker") {
 
   typedef double Float;
-  typedef calico::utilities::meshes::Wavefront<Float> Mesh;
+  typedef calico::utilities::meshes::WavefrontSoA<Float> Mesh;
   typedef calico::math::PluckerContainmentTest<Float, Mesh> Containment;
   // typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
   typedef calico::accelerator::SimpleBvh<Float, Mesh, Containment> Accelerator;
@@ -92,7 +93,7 @@ TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh too small to su
 TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh too small to subdivide; Find the intersection using Moller-Trumbore") {
 
   typedef double Float;
-  typedef calico::utilities::meshes::Wavefront<Float> Mesh;
+  typedef calico::utilities::meshes::WavefrontSoA<Float> Mesh;
   typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
   typedef calico::accelerator::SimpleBvh<Float, Mesh, Containment> Accelerator;
 
@@ -141,6 +142,63 @@ TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh too small to su
   REQUIRE(hit_z[0] == doctest::Approx(3.));
 }
 //=============================================================================
+
+
+TEST_CASE("fire a single ray against an AoS Wavefront OBJ loaded mesh too small to subdivide; Find the intersection using Moller-Trumbore") {
+
+  typedef double Float;
+  typedef calico::utilities::meshes::WavefrontAoS<Float> Mesh;
+  typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
+  typedef calico::accelerator::SimpleBvh<Float, Mesh, Containment> Accelerator;
+
+  std::stringstream plate_string;
+  plate_string << "v -1 -1  3\n"
+               << "v  1 -1  3\n"
+               << "v  1  1  3\n"
+               << "v -1  1  3\n"
+               << "\n"
+               << "f  1 2 3 4\n";
+
+  Mesh plate(plate_string);
+  Accelerator accelerator(plate);
+
+  auto tracer = calico::make_tracer<Float>(plate, accelerator);
+
+  Mesh::FaceId face_id[1] = {Mesh::ray_miss_id_c};
+  Float start_x[1]     = { 0.};
+  Float start_y[1]     = { 0.};
+  Float start_z[1]     = {10.};
+  Float direction_x[1] = { 0.};
+  Float direction_y[1] = { 0.};
+  Float direction_z[1] = {-1.};
+  auto rays = 
+    calico::input::make_soa_input<Float, Mesh::FaceId>(1, face_id, 
+                                         start_x, start_y, start_z,
+                                         direction_x, direction_y, direction_z);
+
+
+  Float t[1]              = {-1000.};
+  Float hit_x[1]          = {-1000.};
+  Float hit_y[1]          = {-1000.};
+  Float hit_z[1]          = {-1000.};
+  auto results = 
+    calico::result::make_soa_result<Float, std::size_t>(face_id, t, hit_x, hit_y, hit_z);
+
+
+  tracer.trace_rays(rays, results);
+
+  // Verify the ray struck the surface we expected in the location we expected.
+  // It's actually ambiguous whether the ray will strike facet 0 or 1. The ray
+  // should strike along the edge shared by the two facets.
+  REQUIRE(bool(face_id[0] == 0u || face_id[0] == 1u));
+  REQUIRE(hit_x[0] == doctest::Approx(0.));
+  REQUIRE(hit_y[0] == doctest::Approx(0.));
+  REQUIRE(hit_z[0] == doctest::Approx(3.));
+}
+//=============================================================================
+
+
+
 
 
 
