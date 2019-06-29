@@ -272,7 +272,7 @@ private:
     };
     struct Face {
         std::int32_t vertex_index[3];
-        std::size_t operator[](std::size_t const i) {return vertex_index[i];}
+        std::size_t const operator[](std::size_t const i) const {return vertex_index[i];}
     };
 
     std::vector<Plane>  _planes;
