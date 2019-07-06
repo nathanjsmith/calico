@@ -85,7 +85,7 @@ public:
                            const Float direction_y, 
                            const Float direction_z,
                            typename Mesh::FaceId &face, Float &t, 
-                           Float &hit_x, Float &hit_y, Float &hit_z)
+                           Float &hit_x, Float &hit_y, Float &hit_z) const
     {
         typename Mesh::FaceId ignore_face = face;
         face = Mesh::ray_miss_id_c;
