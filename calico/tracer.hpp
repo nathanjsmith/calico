@@ -82,7 +82,7 @@ public:
         hit_{x,y,z} are the x, y and z components of the intersection position.
     */
     template <typename InputArray, typename ResultArray>
-    void trace_rays(const InputArray &input, ResultArray &result)
+    void trace_rays(const InputArray &input, ResultArray &result) const
     {
         const typename InputArray::RayId ray_count = input.size();
 
