@@ -160,7 +160,7 @@ public:
                            const Float direction_y, 
                            const Float direction_z,
                            typename Mesh::FaceId &face, Float &t, 
-                           Float &hit_x, Float &hit_y, Float &hit_z)
+                           Float &hit_x, Float &hit_y, Float &hit_z) const
     {
         Float min_t = FloatMeta::greatest(), max_t = FloatMeta::greatest();
         typename Mesh::FaceId const ignore_face{face};
@@ -175,13 +175,13 @@ public:
                           direction_x, direction_y, direction_z, 
                           inverse_direction_x, inverse_direction_y, inverse_direction_z, 
                           0u, ignore_face, face, min_t, max_t, hit_x, hit_y, hit_z);
-        std::cout << "After recursive_find_intersection:" << std::endl;
-        std::cout << "  min_t = " << min_t << std::endl;
-        std::cout << "  max_t = " << max_t << std::endl;
-        std::cout << "  face  = " << face << std::endl;
-        std::cout << "  hit_x = " << hit_x << std::endl;
-        std::cout << "  hit_y = " << hit_y << std::endl;
-        std::cout << "  hit_z = " << hit_z << std::endl;
+        // std::cout << "After recursive_find_intersection:" << std::endl;
+        // std::cout << "  min_t = " << min_t << std::endl;
+        // std::cout << "  max_t = " << max_t << std::endl;
+        // std::cout << "  face  = " << face << std::endl;
+        // std::cout << "  hit_x = " << hit_x << std::endl;
+        // std::cout << "  hit_y = " << hit_y << std::endl;
+        // std::cout << "  hit_z = " << hit_z << std::endl;
 
         if (face != Mesh::ray_miss_id_c) {
             t = min_t;
@@ -215,7 +215,7 @@ private:
     void recursive_subdivide(std::size_t node_index)
     {
         if (_nodes[node_index].count() <= std::size_t(4)) {
-            std::cout << "Node is too small to subdivide. It has only " << _nodes[node_index].count() << " elements." << std::endl;
+            // std::cout << "Node is too small to subdivide. It has only " << _nodes[node_index].count() << " elements." << std::endl;
             // Don't subdivide.
             return;
         }
@@ -348,7 +348,7 @@ private:
                            typename Mesh::FaceId const ignore_face,
                            typename Mesh::FaceId &face, 
                            Float &min_t, Float &max_t,
-                           Float &hit_x, Float &hit_y, Float &hit_z)
+                           Float &hit_x, Float &hit_y, Float &hit_z) const
     {
         // Should we explore this node?
         Float local_min_t = 0., local_max_t = FloatMeta::greatest();
@@ -360,16 +360,16 @@ private:
                 _nodes[node_id].max[0], _nodes[node_id].max[1], _nodes[node_id].max[2], 
                 local_min_t, local_max_t))
         {
-            std::cout << "The ray doesn't strike this node's bounding box" << std::endl;
+            // std::cout << "The ray doesn't strike this node's bounding box" << std::endl;
             return;
         }
         if (local_min_t > min_t) {
-            std::cout << "Ray strikes the node's bounding box, but min_t is " << local_min_t << " > " << min_t << std::endl;
+            // std::cout << "Ray strikes the node's bounding box, but min_t is " << local_min_t << " > " << min_t << std::endl;
             // It's a candidate, but the closest hit possible is further away
             // than the closest hit found thus far. Ignore this box.
             return;
         }
-        std::cout << "local_min_t is within bounds" << std::endl;
+        // std::cout << "local_min_t is within bounds" << std::endl;
 
         // Yes, this node is a potential hit candidate.  Is it a leaf node?
         if (_nodes[node_id].leaf) {
@@ -377,9 +377,9 @@ private:
             for (std::size_t i{_nodes[node_id].start}; i < _nodes[node_id].stop; ++i) {
                 std::size_t const face_index{_triangle_indices[i]};
                 typename Mesh::FaceId const f{_mesh.index_to_face_id(face_index)};
-                std::cout << "Considering triangle " << f << std::endl;
+                // std::cout << "Considering triangle " << f << std::endl;
                 if (f == ignore_face) {
-                    std::cout << "  Ignoring this triangle as instructed" << std::endl;
+                    // std::cout << "  Ignoring this triangle as instructed" << std::endl;
                     continue;
                 }
 
@@ -396,7 +396,7 @@ private:
                                                            direction_x,
                                                            direction_y,
                                                            direction_z);
-                std::cout << "Intersectino with plane at " << tmp_t << std::endl;
+                // std::cout << "Intersection with plane at " << tmp_t << std::endl;
 
                 // Only keep hits in front of the start point.  Only calculate the
                 // intersection point if the hit distance is better than our
@@ -420,7 +420,7 @@ private:
             }// end loop over triangles in this node
         }// end if node is leaf
         else {
-            std::cout << "Node is not a leaf. Searching children" << std::endl;
+            // std::cout << "Node is not a leaf. Searching children" << std::endl;
             // This node is the parent of two more bounding boxes.
             recursive_find_intersection(start_x, start_y, start_z,
                                         direction_x, direction_y, direction_z,
