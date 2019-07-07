@@ -28,8 +28,46 @@
 #include <calico/math.hpp>
 #include <calico/accelerator/bounding_box.hpp>
 
+#include <iterator>
+#include <algorithm>
+#include <cassert>
+
 namespace calico {
 namespace accelerator {
+
+
+template <typename Node>
+void export_bvh_to_obj(std::vector<Node> const &nodes, std::size_t index, std::size_t parent, std::ostream &stream)
+{
+    if (nodes[index].leaf) {
+        stream << "g Leaf " << index << ", child of " << parent << "\n";
+    }
+    else {
+        stream << "g Branch " << index << ", child of " << parent << "\n";
+    }
+    stream << "v " << nodes[index].min[0] << " " << nodes[index].min[1] << " " << nodes[index].min[2] << "\n"; // -8 (-1,-1,-1)
+    stream << "v " << nodes[index].min[0] << " " << nodes[index].min[1] << " " << nodes[index].max[2] << "\n"; // -7 (-1,-1, 1)
+    stream << "v " << nodes[index].min[0] << " " << nodes[index].max[1] << " " << nodes[index].min[2] << "\n"; // -6 (-1, 1,-1)
+    stream << "v " << nodes[index].min[0] << " " << nodes[index].max[1] << " " << nodes[index].max[2] << "\n"; // -5 (-1, 1, 1)
+    stream << "v " << nodes[index].max[0] << " " << nodes[index].min[1] << " " << nodes[index].min[2] << "\n"; // -4 ( 1,-1,-1)
+    stream << "v " << nodes[index].max[0] << " " << nodes[index].min[1] << " " << nodes[index].max[2] << "\n"; // -3 ( 1,-1, 1)
+    stream << "v " << nodes[index].max[0] << " " << nodes[index].max[1] << " " << nodes[index].min[2] << "\n"; // -2 ( 1, 1,-1)
+    stream << "v " << nodes[index].max[0] << " " << nodes[index].max[1] << " " << nodes[index].max[2] << "\n"; // -1 ( 1, 1, 1)
+    stream << "f -8 -7 -5 -6\n"; // left
+    stream << "f -4 -2 -1 -3\n"; // right
+    stream << "f -8 -4 -3 -7\n"; // front
+    stream << "f -6 -5 -1 -2\n"; // back
+    stream << "f -7 -3 -1 -5\n"; // top
+    stream << "f -8 -6 -2 -4\n"; // bottom
+
+    if (nodes[index].leaf) {
+        return;
+    }
+
+    // Recurse
+    export_bvh_to_obj(nodes, nodes[index].start, index, stream); // left
+    export_bvh_to_obj(nodes, nodes[index].stop, index, stream);  // right
+}
 
 /// Find the minimum component of the 3-tuple x1, x2, x3
 template <typename Float, typename FloatMeta>
@@ -90,6 +128,8 @@ public:
         _centroid[1].resize(mesh.size(), Float(0.));
         _centroid[2].resize(mesh.size(), Float(0.));
 
+        std::cout << "Constructing bounding box around " << mesh.size() << " triangles." << std::endl;
+
         std::size_t const mesh_size = mesh.size();
         for (std::size_t i{0u}; i < mesh_size; ++i) {
             // Compute tb_i
@@ -115,9 +155,16 @@ public:
         _nodes[0u].leaf  = true;
         _nodes[0u].start = 0u;
         _nodes[0u].stop  = mesh.size();
-        _next_available_node = 2u;
+        _next_available_node = 1u;
 
-        recursive_subdivide(0u);
+        std::cout << "Leaf node is (" << _nodes[0].min[0] << ", " << _nodes[0].min[1] << ", " << _nodes[0].min[2] << ") - ("
+                                      << _nodes[0].max[0] << ", " << _nodes[0].max[1] << ", " << _nodes[0].max[2] << ")" 
+                                      << std::endl;
+
+        recursive_subdivide(/*node_index=*/0u, /*level=*/1u, /*max_levels=*/8u);
+
+        std::cout << "Traversing computed BVH and writing out boxes at each level:" << std::endl;
+        export_bvh_to_obj(_nodes, 0, 0, std::cout);
     }
 
     ~SimpleBvh() = default;
@@ -212,10 +259,18 @@ private:
 
       @param node_index     Index of the leaf-node to consider for a split.
     */
-    void recursive_subdivide(std::size_t node_index)
+    void recursive_subdivide(std::size_t node_index, std::size_t level, std::size_t max_levels)
     {
+        std::cout << "Considering split of node " << node_index << " {" << std::endl;
+        if (level == max_levels) {
+            std::cout << "  Hit max levels. Stopping subdivision" << std::endl;
+            std::cout << "}" << std::endl;
+            // Don't subdivide.
+            return;
+        }
         if (_nodes[node_index].count() <= std::size_t(4)) {
-            // std::cout << "Node is too small to subdivide. It has only " << _nodes[node_index].count() << " elements." << std::endl;
+            std::cout << "  Node is too small to subdivide. It has only " << _nodes[node_index].count() << " elements." << std::endl;
+            std::cout << "}" << std::endl;
             // Don't subdivide.
             return;
         }
@@ -238,16 +293,26 @@ private:
 
         // Midpoint split point
         Float split_point = _nodes[node_index].min[widest_axis] + magnitudes[widest_axis] * 0.5;
+        std::cout << "  Found split point along axis-" << int(widest_axis) 
+                  << " (" << _nodes[node_index].min[widest_axis] << " to " << _nodes[node_index].max[widest_axis] 
+                  << ") at " << split_point << std::endl;
 
         // Copy the triangle indices out of the set of elements we're going to
         // overwrite
         // TODO: I'm sure there's something really simple we can do to avoid
         //       making this copy, but for my first pass I'm going to just do
         //       this for the simplicity and ensure I get the expected outcome.
-        std::vector<std::size_t> old_triangle_indices(_nodes[node_index].count());
+        std::vector<std::size_t> old_triangle_indices;// (_nodes[node_index].count());
+        old_triangle_indices.reserve(_nodes[node_index].count());
         std::copy(_triangle_indices.begin() + _nodes[node_index].start, // start index
-                  _triangle_indices.begin() + _nodes[node_index].count(), // stop index
-                  old_triangle_indices.begin());
+                  _triangle_indices.begin() + _nodes[node_index].start + _nodes[node_index].count(), // stop index
+                  std::back_inserter(old_triangle_indices));
+        // std::copy(_triangle_indices.begin() + _nodes[node_index].start, // start index
+        //           _triangle_indices.begin() + _nodes[node_index].start + _nodes[node_index].count(), // stop index
+        //           old_triangle_indices.begin());
+        std::cout << "  Sought to copy " << _nodes[node_index].count() << " triangle indices" << std::endl;
+        std::cout << "    old_triangle_indices holds " << old_triangle_indices.size() << " indices" << std::endl;
+        assert(old_triangle_indices.size() == _nodes[node_index].count());
 
         // Initialize two new leaf nodes that we'll made children after
         // promoting the provided leaf-node into a tree node.
@@ -280,11 +345,13 @@ private:
         for (std::size_t i{0u}; i < count; ++i) {
             triangle_index = old_triangle_indices[i];
             if (_centroid[widest_axis][triangle_index] < split_point) {
+                std::cout << "  Triangle " << triangle_index << " centroid at " << _centroid[widest_axis][triangle_index] << " < " << split_point << ", so sorted to the left" << std::endl;
                 _triangle_indices[left_index++] = triangle_index;
                 ++left_count;
                 stored_node = left_node;
             }
             else {
+                std::cout << "  Triangle " << triangle_index << " centroid at " << _centroid[widest_axis][triangle_index] << " >= " << split_point << ", so sorted to the right" << std::endl;
                 _triangle_indices[right_index--] = triangle_index;
                 ++right_count;
                 stored_node = right_node;
@@ -312,8 +379,16 @@ private:
             // ended up on the same side. Just leave the current node a leaf.
             // Restore the _next_available_node to its previous position.
             _next_available_node -= std::size_t(2);
+            std::cout << "  All triangles sorted to one side (left=" << left_count << ", right=" << right_count << "). Reverting to leaf." << std::endl;
         }
         else {
+            std::cout << "  Success! We divided the triangles into (left=" << left_count << ", right=" << right_count << ") bins!" << std::endl;
+            std::cout << "    The bounding box looks like:" << std::endl;
+            std::cout << "    Left:  (" << _nodes[left_node].min[0] << ", " << _nodes[left_node].min[1] << ", " << _nodes[left_node].min[2] << ")" << std::endl;
+            std::cout << "           (" << _nodes[left_node].max[0] << ", " << _nodes[left_node].max[1] << ", " << _nodes[left_node].max[2] << ")" << std::endl;
+            std::cout << "    Right: (" << _nodes[right_node].min[0] << ", " << _nodes[right_node].min[1] << ", " << _nodes[right_node].min[2] << ")" << std::endl;
+            std::cout << "           (" << _nodes[right_node].max[0] << ", " << _nodes[right_node].max[1] << ", " << _nodes[right_node].max[2] << ")" << std::endl;
+
             // Update the start/stop indices
             _nodes[left_node].start = _nodes[node_index].start;
             _nodes[left_node].stop  = _nodes[node_index].start + left_count;
@@ -328,9 +403,10 @@ private:
             _nodes[node_index].stop  = right_node;
 
             // Subdivide the left and right halves
-            recursive_subdivide(left_index);
-            recursive_subdivide(right_index);
+            recursive_subdivide(left_node, level+1, max_levels);
+            recursive_subdivide(right_node, level+1, max_levels);
         }
+        std::cout << "}" << std::endl;
     }
     
     /// Internal search of nodes for intersections

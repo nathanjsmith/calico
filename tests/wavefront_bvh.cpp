@@ -27,6 +27,7 @@
 #include <calico/input/soa_input.hpp>
 #include <calico/result/soa_result.hpp>
 #include <calico/accelerator/simple_bvh.hpp>
+#include <calico/accelerator/brute_force.hpp>
 #include <calico/utilities/meshes/wavefront_soa.hpp>
 #include <calico/utilities/meshes/wavefront_aos.hpp>
 
@@ -34,6 +35,7 @@
 #include "doctest.h"
 
 #include <iostream>
+#include <fstream>
 
 TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh too small to subdivide; Find the intersection using Plucker") {
 
@@ -194,6 +196,72 @@ TEST_CASE("fire a single ray against an AoS Wavefront OBJ loaded mesh too small 
   REQUIRE(hit_x[0] == doctest::Approx(0.));
   REQUIRE(hit_y[0] == doctest::Approx(0.));
   REQUIRE(hit_z[0] == doctest::Approx(3.));
+}
+//=============================================================================
+
+
+TEST_CASE("fire a single ray against an AoS Wavefront OBJ mesh loaded from disk") {
+
+  typedef double Float;
+  typedef calico::utilities::meshes::WavefrontAoS<Float> Mesh;
+  typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
+  typedef calico::accelerator::SimpleBvh<Float, Mesh, Containment> BvhAccelerator;
+  typedef calico::accelerator::BruteForce<Float, Mesh, Containment> BruteForce;
+
+  std::ifstream mesh_stream("../meshes/LGPL-meshes/lamp.obj");
+  Mesh mesh(mesh_stream);
+  BvhAccelerator accelerator(mesh);
+  BruteForce brute_force(mesh);
+
+  Float aabb[6] = {0., 0., 0.,
+                   0., 0., 0.};
+  mesh.bounding_box(aabb[0], aabb[1], aabb[2],
+                    aabb[3], aabb[4], aabb[5]);
+
+  // Fire a ray straight through the center of the mesh
+  Mesh::FaceId bvh_face_id[1] = {Mesh::ray_miss_id_c};
+  Mesh::FaceId brute_face_id[1] = {Mesh::ray_miss_id_c};
+  Float start_x[1]     = { aabb[3] + 5. }; // to the right of the mesh
+  Float start_y[1]     = { (aabb[4] - aabb[1]) * 0.5 + aabb[1] }; // centerd in Y
+  Float start_z[1]     = { (aabb[5] - aabb[2]) * 0.5 + aabb[2] }; // and in Z
+  Float direction_x[1] = {-1.};
+  Float direction_y[1] = { 0.};
+  Float direction_z[1] = { 0.};
+  auto rays = 
+    calico::input::make_soa_input<Float, Mesh::FaceId>(1, bvh_face_id, 
+                                         start_x, start_y, start_z,
+                                         direction_x, 
+                                         direction_y, 
+                                         direction_z);
+
+
+
+  // Shoot a ray using the BVH accelerator...
+  Float bvh_t[1]              = {-1000.};
+  Float bvh_hit_x[1]          = {-1000.};
+  Float bvh_hit_y[1]          = {-1000.};
+  Float bvh_hit_z[1]          = {-1000.};
+  auto bvh_results = 
+    calico::result::make_soa_result<Float, std::size_t>(bvh_face_id, bvh_t, bvh_hit_x, bvh_hit_y, bvh_hit_z);
+  auto bvh_tracer = calico::make_tracer<Float>(mesh, accelerator);
+  bvh_tracer.trace_rays(rays, bvh_results);
+
+  // ... and the *same* ray using the brute-force accelerator. This will be
+  // *much* slower, but should match the BVH.
+  Float brute_t[1]              = {-1000.};
+  Float brute_hit_x[1]          = {-1000.};
+  Float brute_hit_y[1]          = {-1000.};
+  Float brute_hit_z[1]          = {-1000.};
+  auto brute_results = 
+    calico::result::make_soa_result<Float, std::size_t>(brute_face_id, brute_t, brute_hit_x, brute_hit_y, brute_hit_z);
+  auto brute_tracer = calico::make_tracer<Float>(mesh, brute_force);
+  brute_tracer.trace_rays(rays, brute_results);
+
+  // Verify that both tracers hit the same facet at the same position
+  REQUIRE(bool(bvh_face_id[0] == brute_face_id[0]));
+  REQUIRE(bvh_hit_x[0] == doctest::Approx(brute_hit_x[0]));
+  REQUIRE(bvh_hit_y[0] == doctest::Approx(brute_hit_y[0]));
+  REQUIRE(bvh_hit_z[0] == doctest::Approx(brute_hit_z[0]));
 }
 //=============================================================================
 
