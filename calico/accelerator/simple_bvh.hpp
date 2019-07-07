@@ -116,29 +116,27 @@ public:
         // 1. bounding box and centroid for each triangle (tb and c respectively)
         // 2. Bounding box for _all_ the triangles (vb, or voxel-bounds)
         // 3. Bounding box for _all_ the centroids (cb)
-        _triangle_min_x.resize(mesh.size(), FloatMeta::greatest());
-        _triangle_min_y.resize(mesh.size(), FloatMeta::greatest());
-        _triangle_min_z.resize(mesh.size(), FloatMeta::greatest());
-
-        _triangle_max_x.resize(mesh.size(), FloatMeta::lowest());
-        _triangle_max_y.resize(mesh.size(), FloatMeta::lowest());
-        _triangle_max_z.resize(mesh.size(), FloatMeta::lowest());
-
         _centroid[0].resize(mesh.size(), Float(0.));
         _centroid[1].resize(mesh.size(), Float(0.));
         _centroid[2].resize(mesh.size(), Float(0.));
+        _triangle_bounds[0].resize(mesh.size(), Limits{FloatMeta::greatest(), FloatMeta::lowest()});
+        _triangle_bounds[1].resize(mesh.size(), Limits{FloatMeta::greatest(), FloatMeta::lowest()});
+        _triangle_bounds[2].resize(mesh.size(), Limits{FloatMeta::greatest(), FloatMeta::lowest()});
 
         std::cout << "Constructing bounding box around " << mesh.size() << " triangles." << std::endl;
 
         std::size_t const mesh_size = mesh.size();
         for (std::size_t i{0u}; i < mesh_size; ++i) {
             // Compute tb_i
-            _triangle_min_x[i] = min_v<Float, FloatMeta>(_mesh.x(i, 0), _mesh.x(i, 1), _mesh.x(i, 2));
-            _triangle_max_x[i] = max_v<Float, FloatMeta>(_mesh.x(i, 0), _mesh.x(i, 1), _mesh.x(i, 2));
-            _triangle_min_y[i] = min_v<Float, FloatMeta>(_mesh.y(i, 0), _mesh.y(i, 1), _mesh.y(i, 2));
-            _triangle_max_y[i] = max_v<Float, FloatMeta>(_mesh.y(i, 0), _mesh.y(i, 1), _mesh.y(i, 2));
-            _triangle_min_z[i] = min_v<Float, FloatMeta>(_mesh.z(i, 0), _mesh.z(i, 1), _mesh.z(i, 2));
-            _triangle_max_z[i] = max_v<Float, FloatMeta>(_mesh.z(i, 0), _mesh.z(i, 1), _mesh.z(i, 2));
+            _triangle_bounds[0][i].min = min_v<Float, FloatMeta>(_mesh.x(i, 0), _mesh.x(i, 1), _mesh.x(i, 2));
+            _triangle_bounds[0][i].max = max_v<Float, FloatMeta>(_mesh.x(i, 0), _mesh.x(i, 1), _mesh.x(i, 2));
+
+            _triangle_bounds[1][i].min = min_v<Float, FloatMeta>(_mesh.y(i, 0), _mesh.y(i, 1), _mesh.y(i, 2));
+            _triangle_bounds[1][i].max = max_v<Float, FloatMeta>(_mesh.y(i, 0), _mesh.y(i, 1), _mesh.y(i, 2));
+
+            _triangle_bounds[2][i].min = min_v<Float, FloatMeta>(_mesh.z(i, 0), _mesh.z(i, 1), _mesh.z(i, 2));
+            _triangle_bounds[2][i].max = max_v<Float, FloatMeta>(_mesh.z(i, 0), _mesh.z(i, 1), _mesh.z(i, 2));
+
             centroid(_mesh, i, _centroid[0][i], _centroid[1][i], _centroid[2][i]);
         }
 
@@ -251,6 +249,11 @@ private:
         std::size_t count() const {return stop - start;}
     };
 
+    struct Limits {
+        Float min;
+        Float max;
+    };
+
     /**
       Given a leaf node, determine whether it should be subdivided. If so,
       convert the leaf into a node, create a left and right child, and divide
@@ -360,18 +363,18 @@ private:
             // Update the node's bounding box using the triangle's actual
             // bounds
             _nodes[stored_node].min[0] = FloatMeta::min(_nodes[stored_node].min[0],
-                                                        _triangle_min_x[triangle_index]);
+                                                        _triangle_bounds[0][triangle_index].min);
             _nodes[stored_node].min[1] = FloatMeta::min(_nodes[stored_node].min[1],
-                                                        _triangle_min_y[triangle_index]);
+                                                        _triangle_bounds[1][triangle_index].min);
             _nodes[stored_node].min[2] = FloatMeta::min(_nodes[stored_node].min[2],
-                                                        _triangle_min_z[triangle_index]);
+                                                        _triangle_bounds[2][triangle_index].min);
 
             _nodes[stored_node].max[0] = FloatMeta::max(_nodes[stored_node].max[0],
-                                                        _triangle_max_x[triangle_index]);
+                                                        _triangle_bounds[0][triangle_index].max);
             _nodes[stored_node].max[1] = FloatMeta::max(_nodes[stored_node].max[1],
-                                                        _triangle_max_y[triangle_index]);
+                                                        _triangle_bounds[1][triangle_index].max);
             _nodes[stored_node].max[2] = FloatMeta::max(_nodes[stored_node].max[2],
-                                                        _triangle_max_z[triangle_index]);
+                                                        _triangle_bounds[2][triangle_index].max);
         }
 
         if (left_count == 0u || right_count == 0u) {
@@ -520,19 +523,8 @@ private:
     /// All of the BVH nodes (and leafs) in the BVH tree
     std::vector<Node> _nodes;
 
-    // TODO: Would the bounding boxes be more efficiently accessed as a
-    //       contiguous array of 6 values? I.e. is AoS better than SoA for
-    //       bounding box storage/access? I think it might be so that it
-    //       occupies one cache line, not six.
-
-    std::vector<Float> _triangle_min_x; ///< Component of per-triangle bounds (tb)
-    std::vector<Float> _triangle_min_y; ///< Component of per-triangle bounds (tb)
-    std::vector<Float> _triangle_min_z; ///< Component of per-triangle bounds (tb)
-    std::vector<Float> _triangle_max_x; ///< Component of per-triangle bounds (tb)
-    std::vector<Float> _triangle_max_y; ///< Component of per-triangle bounds (tb)
-    std::vector<Float> _triangle_max_z; ///< Component of per-triangle bounds (tb)
-
-    std::vector<Float> _centroid[3];    // Triangle centroid (c)
+    std::vector<Limits> _triangle_bounds[3];  ///< Min/max of the triangle along each dimension (tb)
+    std::vector<Float>  _centroid[3];         ///< Triangle centroid (c)
 
     /// The nodes point to these indices. The indices point to triangles in the Mesh
     std::vector<std::size_t> _triangle_indices; 
