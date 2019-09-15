@@ -77,7 +77,7 @@ String trim(const String &input) {
     This class lays out its internal data structures using Structure of Arrays
     (SoA). For an Array of Structures (AoS) alternative, see WavefrontAoS.
 */
-template <typename Float>
+template <typename Float, typename interface=calico::math::StdTypeInterface<Float>>
 class WavefrontSoA {
 public:
     typedef int FaceId;
@@ -87,6 +87,14 @@ public:
     static const FaceId ray_miss_id_c = -1;
 
     WavefrontSoA(std::istream &input_stream) {
+
+        _min_x = interface::max_infinity();
+        _min_y = interface::max_infinity();
+        _min_z = interface::max_infinity();
+
+        _max_x = interface::min_infinity();
+        _max_y = interface::min_infinity();
+        _max_z = interface::min_infinity();
 
         std::size_t line_number(0u);
         while (input_stream.good()) {

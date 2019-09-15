@@ -59,7 +59,7 @@ namespace meshes {
     This class lays out its internal data structures using Array of Structures
     (AoS). For a Structure of Arrays (SoA) alternative, see WavefrontSoA.
 */
-template <typename Float>
+template <typename Float, typename interface=calico::math::StdTypeInterface<Float>>
 class WavefrontAoS {
 public:
     typedef std::int32_t FaceId;
@@ -69,6 +69,14 @@ public:
     static const FaceId ray_miss_id_c = -1;
 
     WavefrontAoS(std::istream &input_stream) {
+
+        _min_x = interface::max_infinity();
+        _min_y = interface::max_infinity();
+        _min_z = interface::max_infinity();
+
+        _max_x = interface::min_infinity();
+        _max_y = interface::min_infinity();
+        _max_z = interface::min_infinity();
 
         std::size_t line_number(0u);
         while (input_stream.good()) {

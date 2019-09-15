@@ -66,6 +66,8 @@ struct StdTypeInterface {
 
   // Lowest number that can be represented using this type
   inline constexpr static Float lowest() {return std::numeric_limits<Float>::lowest();}
+
+  inline constexpr static Float epsilon() {return std::numeric_limits<Float>::epsilon();}
   
   inline static Float min(const Float &a, const Float &b) {return std::min(a, b);}
   inline static Float max(const Float &a, const Float &b) {return std::max(a, b);}

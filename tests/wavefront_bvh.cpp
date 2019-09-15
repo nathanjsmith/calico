@@ -209,6 +209,7 @@ TEST_CASE("fire a single ray against an AoS Wavefront OBJ mesh loaded from disk"
   typedef calico::accelerator::BruteForce<Float, Mesh, Containment> BruteForce;
 
   std::ifstream mesh_stream("../meshes/LGPL-meshes/lamp.obj");
+  // std::ifstream mesh_stream("humanoid_tri.obj");
   Mesh mesh(mesh_stream);
   BvhAccelerator accelerator(mesh);
   BruteForce brute_force(mesh);
@@ -219,10 +220,10 @@ TEST_CASE("fire a single ray against an AoS Wavefront OBJ mesh loaded from disk"
                     aabb[3], aabb[4], aabb[5]);
 
   // Fire a ray straight through the center of the mesh
-  Mesh::FaceId bvh_face_id[1] = {Mesh::ray_miss_id_c};
   Mesh::FaceId brute_face_id[1] = {Mesh::ray_miss_id_c};
+  Mesh::FaceId bvh_face_id[1] = {Mesh::ray_miss_id_c};
   Float start_x[1]     = { aabb[3] + 5. }; // to the right of the mesh
-  Float start_y[1]     = { (aabb[4] - aabb[1]) * 0.5 + aabb[1] }; // centerd in Y
+  Float start_y[1]     = { (aabb[4] - aabb[1]) * 0.5 + aabb[1] }; // centered in Y
   Float start_z[1]     = { (aabb[5] - aabb[2]) * 0.5 + aabb[2] }; // and in Z
   Float direction_x[1] = {-1.};
   Float direction_y[1] = { 0.};
@@ -236,7 +237,21 @@ TEST_CASE("fire a single ray against an AoS Wavefront OBJ mesh loaded from disk"
 
 
 
-  // Shoot a ray using the BVH accelerator...
+  // Shoot a ray using the brute-force accelerator...
+  Float brute_t[1]              = {-1000.};
+  Float brute_hit_x[1]          = {-1000.};
+  Float brute_hit_y[1]          = {-1000.};
+  Float brute_hit_z[1]          = {-1000.};
+  auto brute_results = 
+    calico::result::make_soa_result<Float, std::size_t>(brute_face_id, brute_t, brute_hit_x, brute_hit_y, brute_hit_z);
+  auto brute_tracer = calico::make_tracer<Float>(mesh, brute_force);
+  brute_tracer.trace_rays(rays, brute_results);
+
+  std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+  std::cout << "Brute force result: Face " << brute_face_id[0] << " at (" << brute_hit_x[0] << ", " << brute_hit_y[0] << ", " << brute_hit_z[0] << ") at t=" << brute_t[0] << std::endl;
+
+  // ... and the *same* ray using the brute-force accelerator. This _should_ be
+  // *much* faster, but should match the brute-force accelerator.
   Float bvh_t[1]              = {-1000.};
   Float bvh_hit_x[1]          = {-1000.};
   Float bvh_hit_y[1]          = {-1000.};
@@ -246,16 +261,7 @@ TEST_CASE("fire a single ray against an AoS Wavefront OBJ mesh loaded from disk"
   auto bvh_tracer = calico::make_tracer<Float>(mesh, accelerator);
   bvh_tracer.trace_rays(rays, bvh_results);
 
-  // ... and the *same* ray using the brute-force accelerator. This will be
-  // *much* slower, but should match the BVH.
-  Float brute_t[1]              = {-1000.};
-  Float brute_hit_x[1]          = {-1000.};
-  Float brute_hit_y[1]          = {-1000.};
-  Float brute_hit_z[1]          = {-1000.};
-  auto brute_results = 
-    calico::result::make_soa_result<Float, std::size_t>(brute_face_id, brute_t, brute_hit_x, brute_hit_y, brute_hit_z);
-  auto brute_tracer = calico::make_tracer<Float>(mesh, brute_force);
-  brute_tracer.trace_rays(rays, brute_results);
+  std::cout << "BVH result: Face " << bvh_face_id[0] << " at (" << bvh_hit_x[0] << ", " << bvh_hit_y[0] << ", " << bvh_hit_z[0] << ") at t=" << bvh_t[0] << std::endl;
 
   // Verify that both tracers hit the same facet at the same position
   REQUIRE(bool(bvh_face_id[0] == brute_face_id[0]));
