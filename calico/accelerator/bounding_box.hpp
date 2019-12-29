@@ -26,7 +26,9 @@
 #define __CALICO__ACCELERATOR__BOUNDING_BOX__HPP__
 
 #include <calico/math.hpp>
+#include <calico/utilities/memory.h>
 
+#include <functional>
 #include <cmath>
 #include <algorithm>
 #include <limits>
@@ -113,7 +115,7 @@ bool intersects(
             return (left < right ? left : right);
         }
     
-        static inline float max(const float &left, const float &right) {
+        static inline Float max(const Float &left, const Float &right) {
             return (left > right ? left : right);
         }
     };
@@ -166,17 +168,17 @@ public:
                       count(count_) 
     {
         // Use the aligned_alloc function from C11 (/not/ C++11, just C11)
-        min_x = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        min_y = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        min_z = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        min_x = static_cast<Float*>(calico::utilities::memory::aligned_alloc(16, sizeof(Float)*count));
+        min_y = static_cast<Float*>(calico::utilities::memory::aligned_alloc(16, sizeof(Float)*count));
+        min_z = static_cast<Float*>(calico::utilities::memory::aligned_alloc(16, sizeof(Float)*count));
 
-        max_x = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        max_y = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        max_z = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        max_x = static_cast<Float*>(calico::utilities::memory::aligned_alloc(16, sizeof(Float)*count));
+        max_y = static_cast<Float*>(calico::utilities::memory::aligned_alloc(16, sizeof(Float)*count));
+        max_z = static_cast<Float*>(calico::utilities::memory::aligned_alloc(16, sizeof(Float)*count));
 
-        centroid_x = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        centroid_y = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        centroid_z = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        centroid_x = static_cast<Float*>(calico::utilities::memory::aligned_alloc(16, sizeof(Float)*count));
+        centroid_y = static_cast<Float*>(calico::utilities::memory::aligned_alloc(16, sizeof(Float)*count));
+        centroid_z = static_cast<Float*>(calico::utilities::memory::aligned_alloc(16, sizeof(Float)*count));
     }
 
     ~BoundingBoxes() {

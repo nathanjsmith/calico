@@ -31,6 +31,8 @@
 #include <iterator>
 #include <algorithm>
 #include <cassert>
+#include <vector>
+#include <numeric>
 
 namespace calico {
 namespace accelerator {

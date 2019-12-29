@@ -149,7 +149,7 @@ public:
         max_z = _max_z;
     }
 
-    FaceId index_to_face_id(std::size_t const index) const {return index;}
+    FaceId index_to_face_id(std::size_t const index) const {return static_cast<FaceId>(index);}
 
     Float x(std::size_t index, VertexId corner) const {return _x.at(index*3+corner);}
     Float y(std::size_t index, VertexId corner) const {return _y.at(index*3+corner);}

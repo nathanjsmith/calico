@@ -37,11 +37,11 @@
 
 TEST_CASE("fire a single ray against a flat 1x1 plate") {
 
-  typedef double Float;
-  typedef calico::utilities::meshes::Plate<Float> Mesh;
-  typedef calico::math::PluckerContainmentTest<Float, Mesh> Containment;
-  // typedef calico::math::MollerTrumboreContainmentTest<Float, Mesh> Containment;
-  typedef calico::accelerator::BruteForce<Float, Mesh, Containment> Accelerator;
+  using Float = double;
+  using Mesh = calico::utilities::meshes::Plate<Float>;
+  using Containment = calico::math::PluckerContainmentTest<Float, Mesh>;
+  // using Containment = calico::math::MollerTrumboreContainmentTest<Float, Mesh>;
+  using Accelerator = calico::accelerator::BruteForce<Float, Mesh, Containment>;
 
   Mesh plate;
   Accelerator accelerator(plate);
@@ -71,7 +71,7 @@ TEST_CASE("fire a single ray against a flat 1x1 plate") {
   // Create a SoaResults object that adapts (provides a view into) the
   // strike_face_id, t, hit_x, hit_y, and hit_z arrays.
   auto results = 
-    calico::result::make_soa_result<Float, std::size_t>(strike_face_id, t, hit_x, hit_y, hit_z);
+    calico::result::make_soa_result<Float, Mesh::FaceId>(strike_face_id, t, hit_x, hit_y, hit_z);
 
 
   // Trace our 1 ray against the plate and record the results through the
@@ -85,6 +85,8 @@ TEST_CASE("fire a single ray against a flat 1x1 plate") {
   REQUIRE(hit_x[0] == doctest::Approx(0.));
   REQUIRE(hit_y[0] == doctest::Approx(0.));
   REQUIRE(hit_z[0] == doctest::Approx(3.));
+
+  std::cout << "Test complete" << std::endl;
 }
 //=============================================================================
 
