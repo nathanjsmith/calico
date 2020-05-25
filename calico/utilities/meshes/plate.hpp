@@ -22,8 +22,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#ifndef __CALICO__UTILITIES__MESHES__PLATE__HPP__
-#define __CALICO__UTILITIES__MESHES__PLATE__HPP__
+#ifndef CALICO_UTILITIES_MESHES_PLATE_HPP
+#define CALICO_UTILITIES_MESHES_PLATE_HPP
 
 #include <calico/math.hpp>
 
@@ -95,7 +95,7 @@ public:
         _max_y = interface::min_infinity();
         _max_z = interface::min_infinity();
 
-        for (FaceId i = 0u; i < 2u; ++i) {
+        for (std::size_t i{ 0 }; i < 2u; ++i) {
             // Automatically compute the normal and d for the triangle
             math::cross(x(i,2) - x(i,1), y(i,2) - y(i,1), z(i,2) - z(i,1),
                         x(i,0) - x(i,1), y(i,0) - y(i,1), z(i,0) - z(i,1),
@@ -149,7 +149,7 @@ public:
         max_z = _max_z;
     }
 
-    FaceId index_to_face_id(std::size_t const index) const {return index;}
+    FaceId index_to_face_id(std::size_t const index) const {return static_cast<FaceId>(index);}
 
     Float x(std::size_t index, VertexId corner) const {return _x.at(index*3+corner);}
     Float y(std::size_t index, VertexId corner) const {return _y.at(index*3+corner);}

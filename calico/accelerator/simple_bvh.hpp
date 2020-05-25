@@ -22,11 +22,14 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#ifndef __CALICO__ACCELERATOR__SIMPLE_BVH__HPP__
-#define __CALICO__ACCELERATOR__SIMPLE_BVH__HPP__
+#ifndef CALICO_ACCELERATOR_SIMPLE_BVH_HPP
+#define CALICO_ACCELERATOR_SIMPLE_BVH_HPP
 
 #include <calico/math.hpp>
 #include <calico/accelerator/bounding_box.hpp>
+
+#include <vector>
+#include <numeric>
 
 namespace calico {
 namespace accelerator {
@@ -142,10 +145,8 @@ public:
         @param direction_y  Y-component of the ray's unit direction (input)
         @param direction_z  Z-component of the ray's unit direction (input)
         @param face         Face for which intersection testing will be skipped 
-                            (input)
-
-        @param face         Id of the face on which the closest intersection
-                            was discovered (output)
+                            (input). Id of the face on which the closest
+                            intersection was discovered (output).
         @param t            Distance along the path that the intersection 
                             is found. Will be set to FloatMeta::greatest() if no 
                             intersection is found (output)
@@ -245,8 +246,8 @@ private:
         //       making this copy, but for my first pass I'm going to just do
         //       this for the simplicity and ensure I get the expected outcome.
         std::vector<std::size_t> old_triangle_indices(_nodes[node_index].count());
-        std::copy(_triangle_indices.begin() + _nodes[node_index].start, // start index
-                  _triangle_indices.begin() + _nodes[node_index].count(), // stop index
+        std::copy(_triangle_indices.begin() + static_cast<typename decltype(_triangle_indices)::difference_type>(_nodes[node_index].start), // start index
+                  _triangle_indices.begin() + static_cast<typename decltype(_triangle_indices)::difference_type>(_nodes[node_index].count()), // stop index
                   old_triangle_indices.begin());
 
         // Initialize two new leaf nodes that we'll made children after

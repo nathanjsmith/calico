@@ -71,7 +71,7 @@ TEST_CASE("fire a single ray against a flat 1x1 plate") {
   // Create a SoaResults object that adapts (provides a view into) the
   // strike_face_id, t, hit_x, hit_y, and hit_z arrays.
   auto results = 
-    calico::result::make_soa_result<Float, std::size_t>(strike_face_id, t, hit_x, hit_y, hit_z);
+    calico::result::make_soa_result<Float, Mesh::FaceId>(strike_face_id, t, hit_x, hit_y, hit_z);
 
 
   // Trace our 1 ray against the plate and record the results through the

@@ -22,8 +22,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#ifndef __CALICO__MATH__HPP__
-#define __CALICO__MATH__HPP__
+#ifndef CALICO_MATH_HPP
+#define CALICO_MATH_HPP
 
 #include <cmath>
 #include <limits>
@@ -144,17 +144,17 @@ void cross(const FloatA &x1, const FloatA &y1, const FloatA &z1,
 /**
   Compute the area of a triangle.
 
-  @param x1 A.x
-  @param y1 A.y
-  @param z1 A.z
+  @param x0 A.x
+  @param y0 A.y
+  @param z0 A.z
 
-  @param x2 B.x
-  @param y2 B.y
-  @param z2 B.z
+  @param x1 B.x
+  @param y1 B.y
+  @param z1 B.z
 
-  @param x3 C.x
-  @param y3 C.y
-  @param z3 C.z
+  @param x2 C.x
+  @param y2 C.y
+  @param z2 C.z
 
   area = |(B - A) x (C - A)| / 2
 */

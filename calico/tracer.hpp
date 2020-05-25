@@ -23,8 +23,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //
 
-#ifndef __CALICO__TRACER__HPP__
-#define __CALICO__TRACER__HPP__
+#ifndef CALICO_TRACER_HPP
+#define CALICO_TRACER_HPP
 
 #include <calico/math.hpp>
 
@@ -114,7 +114,7 @@ private:
 
 template <typename Float, typename MeshAdapter, typename Accelerator>
 Tracer<Float, MeshAdapter, Accelerator>
-  make_tracer(const MeshAdapter &adapter, Accelerator &accelerator) {
+  make_tracer(const MeshAdapter &/*adapter*/, Accelerator &accelerator) {
     return Tracer<Float, MeshAdapter, Accelerator>(accelerator);
   }
 

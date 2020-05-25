@@ -30,6 +30,7 @@
 
 #include <random>
 #include <iostream>
+#include <functional>
 
 TEST_CASE("hard_coded_cases") {
   typedef double Float;
@@ -114,7 +115,6 @@ TEST_CASE("hard_coded_cases") {
     inverse_direction_z[i] = Float(1) / direction_z[i];
   }
 
-  const size_t aabb_count(1);
   Float min_x[1] = {0.};
   Float min_y[1] = {0.};
   Float min_z[1] = {0.};
@@ -349,7 +349,7 @@ TEST_CASE("generalized_misses") {
   typedef double Float;
 
   std::mt19937 rng;
-  std::uniform_real_distribution<Float> uniform_before(-1., -2.);
+  std::uniform_real_distribution<Float> uniform_before(-2., -1.);
   std::uniform_real_distribution<Float> uniform_within( 0.,  1.);
   std::uniform_real_distribution<Float> uniform_beyond( 1.,  2.);
   std::uniform_real_distribution<Float> uniform_scalar(-1., 1.);

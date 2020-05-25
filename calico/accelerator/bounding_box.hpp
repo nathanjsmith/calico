@@ -22,8 +22,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#ifndef __CALICO__ACCELERATOR__BOUNDING_BOX__HPP__
-#define __CALICO__ACCELERATOR__BOUNDING_BOX__HPP__
+#ifndef CALICO_ACCELERATOR_BOUNDING_BOX_HPP
+#define CALICO_ACCELERATOR_BOUNDING_BOX_HPP
 
 #include <calico/math.hpp>
 
@@ -33,7 +33,7 @@
 #include <iostream>
 #include <memory>
 
-#include <cstdlib> // for aligned_alloc
+#include <cstdlib> // for malloc
 
 namespace calico {
 namespace accelerator {
@@ -113,7 +113,7 @@ bool intersects(
             return (left < right ? left : right);
         }
     
-        static inline float max(const float &left, const float &right) {
+        static inline Float max(const Float &left, const Float &right) {
             return (left > right ? left : right);
         }
     };
@@ -135,9 +135,9 @@ bool intersects(
 
 
 /**
-    For a pointer that was allocated using malloc, calloc, aligned_alloc, etc.,
-    free that memory and assign nullptr. The pointer is passed by reference so
-    that it can be assigned a value.
+    For a pointer that was allocated using malloc, calloc, etc., free that
+    memory and assign nullptr. The pointer is passed by reference so that it
+    can be assigned a value.
 */
 template <typename T>
 void release(T &p) {
@@ -165,18 +165,20 @@ public:
                       centroid_x(nullptr), centroid_y(nullptr), centroid_z(nullptr),
                       count(count_) 
     {
-        // Use the aligned_alloc function from C11 (/not/ C++11, just C11)
-        min_x = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        min_y = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        min_z = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        // I originally used the C11 function ::aligned_alloc, but that isn't
+        // supported on Windows. Falling back to cross-platform malloc instead.
+        // Should just switch to use std::vector at this point.
+        min_x = static_cast<Float*>(::malloc(sizeof(Float)*count));
+        min_y = static_cast<Float*>(::malloc(sizeof(Float)*count));
+        min_z = static_cast<Float*>(::malloc(sizeof(Float)*count));
 
-        max_x = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        max_y = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        max_z = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        max_x = static_cast<Float*>(::malloc(sizeof(Float)*count));
+        max_y = static_cast<Float*>(::malloc(sizeof(Float)*count));
+        max_z = static_cast<Float*>(::malloc(sizeof(Float)*count));
 
-        centroid_x = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        centroid_y = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
-        centroid_z = static_cast<Float*>(::aligned_alloc(16, sizeof(Float)*count));
+        centroid_x = static_cast<Float*>(::malloc(sizeof(Float)*count));
+        centroid_y = static_cast<Float*>(::malloc(sizeof(Float)*count));
+        centroid_z = static_cast<Float*>(::malloc(sizeof(Float)*count));
     }
 
     ~BoundingBoxes() {
@@ -222,18 +224,17 @@ std::unique_ptr<BoundingBoxes<typename MeshAdapter::FloatType>>
         std::unique_ptr<BoundingBoxes<typename MeshAdapter::FloatType>>(
                 new BoundingBoxes<typename MeshAdapter::FloatType>(mesh.size()));
     for (std::size_t i{0u}; i != mesh.size(); ++i) {
-        typename MeshAdapter::FaceId f{mesh.index_to_face_id(i)};
-        bounds->min_x[i] = FloatInterface::min(mesh.x(f, 0), FloatInterface::min(mesh.x(f, 1), mesh.x(f, 2)));
-        bounds->min_y[i] = FloatInterface::min(mesh.y(f, 0), FloatInterface::min(mesh.y(f, 1), mesh.y(f, 2)));
-        bounds->min_z[i] = FloatInterface::min(mesh.z(f, 0), FloatInterface::min(mesh.z(f, 1), mesh.z(f, 2)));
+        bounds->min_x[i] = FloatInterface::min(mesh.x(i, 0), FloatInterface::min(mesh.x(i, 1), mesh.x(i, 2)));
+        bounds->min_y[i] = FloatInterface::min(mesh.y(i, 0), FloatInterface::min(mesh.y(i, 1), mesh.y(i, 2)));
+        bounds->min_z[i] = FloatInterface::min(mesh.z(i, 0), FloatInterface::min(mesh.z(i, 1), mesh.z(i, 2)));
 
-        bounds->max_x[i] = FloatInterface::max(mesh.x(f, 0), FloatInterface::max(mesh.x(f, 1), mesh.x(f, 2)));
-        bounds->max_y[i] = FloatInterface::max(mesh.y(f, 0), FloatInterface::max(mesh.y(f, 1), mesh.y(f, 2)));
-        bounds->max_z[i] = FloatInterface::max(mesh.z(f, 0), FloatInterface::max(mesh.z(f, 1), mesh.z(f, 2)));
+        bounds->max_x[i] = FloatInterface::max(mesh.x(i, 0), FloatInterface::max(mesh.x(i, 1), mesh.x(i, 2)));
+        bounds->max_y[i] = FloatInterface::max(mesh.y(i, 0), FloatInterface::max(mesh.y(i, 1), mesh.y(i, 2)));
+        bounds->max_z[i] = FloatInterface::max(mesh.z(i, 0), FloatInterface::max(mesh.z(i, 1), mesh.z(i, 2)));
 
-        bounds->centroid_x[i] = (mesh.x(f, 0) + mesh.x(f, 1) + mesh.x(f, 2)) * one_third;
-        bounds->centroid_y[i] = (mesh.y(f, 0) + mesh.y(f, 1) + mesh.y(f, 2)) * one_third;
-        bounds->centroid_z[i] = (mesh.z(f, 0) + mesh.z(f, 1) + mesh.z(f, 2)) * one_third;
+        bounds->centroid_x[i] = (mesh.x(i, 0) + mesh.x(i, 1) + mesh.x(i, 2)) * one_third;
+        bounds->centroid_y[i] = (mesh.y(i, 0) + mesh.y(i, 1) + mesh.y(i, 2)) * one_third;
+        bounds->centroid_z[i] = (mesh.z(i, 0) + mesh.z(i, 1) + mesh.z(i, 2)) * one_third;
     }
 
     return std::move(bounds);

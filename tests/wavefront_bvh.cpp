@@ -74,7 +74,7 @@ TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh too small to su
   Float hit_y[1]          = {-1000.};
   Float hit_z[1]          = {-1000.};
   auto results = 
-    calico::result::make_soa_result<Float, std::size_t>(face_id, t, hit_x, hit_y, hit_z);
+    calico::result::make_soa_result<Float, Mesh::FaceId>(face_id, t, hit_x, hit_y, hit_z);
 
 
   tracer.trace_rays(rays, results);
@@ -128,7 +128,7 @@ TEST_CASE("fire a single ray against a Wavefront OBJ loaded mesh too small to su
   Float hit_y[1]          = {-1000.};
   Float hit_z[1]          = {-1000.};
   auto results = 
-    calico::result::make_soa_result<Float, std::size_t>(face_id, t, hit_x, hit_y, hit_z);
+    calico::result::make_soa_result<Float, Mesh::FaceId>(face_id, t, hit_x, hit_y, hit_z);
 
 
   tracer.trace_rays(rays, results);
@@ -182,7 +182,7 @@ TEST_CASE("fire a single ray against an AoS Wavefront OBJ loaded mesh too small 
   Float hit_y[1]          = {-1000.};
   Float hit_z[1]          = {-1000.};
   auto results = 
-    calico::result::make_soa_result<Float, std::size_t>(face_id, t, hit_x, hit_y, hit_z);
+    calico::result::make_soa_result<Float, Mesh::FaceId>(face_id, t, hit_x, hit_y, hit_z);
 
 
   tracer.trace_rays(rays, results);

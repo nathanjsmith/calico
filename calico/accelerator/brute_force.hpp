@@ -22,8 +22,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#ifndef __CALICO__ACCELERATOR__BRUTEFORCE__HPP__
-#define __CALICO__ACCELERATOR__BRUTEFORCE__HPP__
+#ifndef CALICO_ACCELERATOR_BRUTEFORCE_HPP
+#define CALICO_ACCELERATOR_BRUTEFORCE_HPP
 
 #include <calico/math.hpp>
 
@@ -68,10 +68,8 @@ public:
         @param direction_y  Y-component of the ray's unit direction (input)
         @param direction_z  Z-component of the ray's unit direction (input)
         @param face         Face for which intersection testing will be skipped 
-                            (input)
-
-        @param face         Id of the face on which the closest intersection
-                            was discovered (output)
+                            (input) Id of the face on which the closest
+                            intersection was discovered (output)
         @param t            Distance along the path that the intersection 
                             is found (output)
         @param hit_x        X-component of the ray intersection (output)

@@ -22,8 +22,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#ifndef __CALICO__UTILITIES__MESHES__WAVEFRONT_AOS__HPP__
-#define __CALICO__UTILITIES__MESHES__WAVEFRONT_AOS__HPP__
+#ifndef CALICO_UTILITIES_MESHES_WAVEFRONT_AOS_HPP
+#define CALICO_UTILITIES_MESHES_WAVEFRONT_AOS_HPP
 
 #include <calico/math.hpp>
 #include <calico/utilities/meshes/wavefront_soa.hpp>
@@ -68,7 +68,13 @@ public:
     
     static const FaceId ray_miss_id_c = -1;
 
-    WavefrontAoS(std::istream &input_stream) {
+    WavefrontAoS(std::istream &input_stream) : _min_x{ std::numeric_limits<decltype(_max_x)>::max() },
+                                               _min_y{ std::numeric_limits<decltype(_max_x)>::max() },
+                                               _min_z{ std::numeric_limits<decltype(_max_x)>::max() },
+                                               _max_x{ std::numeric_limits<decltype(_max_x)>::lowest() },
+                                               _max_y{ std::numeric_limits<decltype(_max_x)>::lowest() },
+                                               _max_z{ std::numeric_limits<decltype(_max_x)>::lowest() }
+{
 
         std::size_t line_number(0u);
         while (input_stream.good()) {
@@ -83,10 +89,14 @@ public:
                 std::size_t i(0u);
                 std::size_t j(0u);
 
+                if (_vertices.size() == std::numeric_limits<int>::max()) {
+                    throw ParseError("Maximum vertex count exceeded on line " + std::to_string(line_number));
+                }
+
                 try {
                     x = std::stod(vertex_coordinates, &i);
                 }
-                catch (const std::exception &e) {
+                catch (const std::exception &) {
                     std::stringstream err;
                     err << "Invalid X vertex on line " << line_number;
                     throw ParseError(err.str());
@@ -96,7 +106,7 @@ public:
                     y = std::stod(vertex_coordinates.substr(i), &j);
                     i += j;
                 }
-                catch (const std::exception &e) {
+                catch (const std::exception &) {
                     std::stringstream err;
                     err << "Invalid Y vertex on line " << line_number;
                     throw ParseError(err.str());
@@ -106,7 +116,7 @@ public:
                     z = std::stod(vertex_coordinates.substr(i), &j);
                     i += j;
                 }
-                catch (const std::exception &e) {
+                catch (const std::exception &) {
                     std::stringstream err;
                     err << "Invalid Z vertex on line " << line_number;
                     throw ParseError(err.str());
@@ -116,7 +126,7 @@ public:
             }
             else if (line.substr(0,2) == "f ") {
                 std::string face_indices = line.substr(1);
-                std::int32_t a{},b{},c{},d{};
+                std::int32_t a{},b{},c{};
                 std::size_t offset{0}, j{0};
                 try {
                     a = std::stoi(face_indices, &j);
@@ -126,7 +136,7 @@ public:
                     c = std::stoi(face_indices.substr(offset), &j);
                     offset += j;
                 }
-                catch (const std::exception &e) {
+                catch (const std::exception &) {
                     std::stringstream err;
                     err << "Invalid face on line " << line_number << ". Faces "
                         << "must contain 3 or 4 vertex IDs";
@@ -134,22 +144,29 @@ public:
                 }
 
                 if (a < 0) {
-                    a = _vertices.size() + a;
+                    a = static_cast<std::int32_t>(_vertices.size()) + a;
                 } else {
                     a -= 1;
                 }
                 if (b < 0) {
-                    b = _vertices.size() + b;
+                    b = static_cast<std::int32_t>(_vertices.size()) + b;
                 } else {
                     b -= 1;
                 }
                 if (c < 0) {
-                    c = _vertices.size() + c;
+                    c = static_cast<std::int32_t>(_vertices.size()) + c;
                 } else {
                     c -= 1;
                 }
 
-                _faces.push_back({a,b,c});
+                if (a < 0 || b < 0 || c < 0) {
+                    throw ParseError("Face definition on line " +
+                                     std::to_string(line_number) + 
+                                     " has an invalid vertex reference");
+                }
+                _faces.push_back({static_cast<std::size_t>(a),
+                                  static_cast<std::size_t>(b),
+                                  static_cast<std::size_t>(c)});
 
                 // I don't know if this is true in general, but I'm assuming
                 // that polygons are always convex and can be treated as
@@ -163,19 +180,26 @@ public:
                         c = std::stoi(face_indices.substr(offset), &j);
                         offset += j;
                     }
-                    catch (const std::exception &e) {
+                    catch (const std::exception &) {
                         // That's ok. This isn't a quad, so just ignore this
                         // exception.
                         break;
                     }
                     if (c < 0) {
-                        c = _vertices.size() + c;
+                        c = static_cast<std::int32_t>(_vertices.size()) + c;
                     } else {
                         c -= 1;
                     }
 
-                    _faces.push_back({a,b,c});
-                }
+					if (a < 0 || b < 0 || c < 0) {
+						throw ParseError("Face definition on line " +
+										 std::to_string(line_number) + 
+										 " has an invalid vertex reference");
+					}
+					_faces.push_back({static_cast<std::size_t>(a),
+									  static_cast<std::size_t>(b),
+									  static_cast<std::size_t>(c)});
+					}
             }
             else if (line.substr(0, 1) == "#") {
                 // Ignore comment lines
@@ -193,7 +217,7 @@ public:
         _planes.resize(_count);
         _areas.resize(_count);
 
-        for (FaceId i = 0u; i < _count; ++i) {
+        for (std::size_t i{0}; i < _count; ++i) {
             // Automatically compute the normal and d for the triangle
             math::cross(x(i,2) - x(i,1), y(i,2) - y(i,1), z(i,2) - z(i,1),
                         x(i,0) - x(i,1), y(i,0) - y(i,1), z(i,0) - z(i,1),
@@ -261,7 +285,7 @@ public:
     std::size_t size() const {return _count;}
 
     /// Convert a face index into a face ID.
-    FaceId index_to_face_id(std::size_t const index) const {return index;}
+    FaceId index_to_face_id(std::size_t const index) const {return static_cast<FaceId>(index);}
 
 private:
     struct Vertex {
@@ -271,8 +295,8 @@ private:
         Float x,y,z,d;
     };
     struct Face {
-        std::int32_t vertex_index[3];
-        std::size_t const operator[](std::size_t const i) const {return vertex_index[i];}
+        std::size_t vertex_index[3];
+        std::size_t operator[](std::size_t const i) const {return vertex_index[i];}
     };
 
     std::vector<Plane>  _planes;
