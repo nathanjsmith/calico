@@ -146,10 +146,6 @@ Each mesh adapter must provide at least the following interface, but may provide
   `FaceId typedef`
    This typedef defines a mechanism for naming each face. A good choice is an `std::int32_t` (aka int on most platforms).
 
-  `FaceIdIterator typedef`
-   Some of the algorithms iterate over the face IDs using a ++ operator, so this type needs to be able to increment as an iterator.
-   See the `begin_face_id()` interface for more details, but if FaceId is an `std::int32_t`, then `std::int32_t` is also a good choice for the FaceIdIterator.
-
   `VertexId typedef`
    This typedef defines a mechanism for naming each vertex. A good choice is an `std::int32_t` (aka int on most platforms).
    Some of the algorithms iterate over the vertex IDs using a ++ operator, so this type needs to be able to increment as an iterator.
@@ -165,48 +161,31 @@ Each mesh adapter must provide at least the following interface, but may provide
    It should also not modify the underlying mesh in the process (hence its const attribute).
    Each of Float should be of the same floating point precision type that was chosen for Calico's internal use (see example above).
 
-  `Float x(FaceId id, VertexId corner) const`
-  `Float y(FaceId id, VertexId corner) const`
-  `Float z(FaceId id, VertexId corner) const`
-   This method of the adapter should return the x, y or z component of the `corner`'th vertex of triangle `id`.
-   For example, suppose triangle 2 of the mesh is defined with the following three vertices: `(0, 0, 0) (6, 2, 3), (-4, 5, 1)`.
-   Calling `x(2, 0)` would return 0; `x(2, 1)` would return 6; and `x(2, 2)` would return -4.
+  `Float x(std::size_t index, VertexId corner) const`
+  `Float y(std::size_t index, VertexId corner) const`
+  `Float z(std::size_t index, VertexId corner) const`
+   This method of the adapter should return the x, y or z component of the `corner`'th vertex of the triangle at `index`.
+   For example, suppose the 2nd triangle of the mesh is defined with the following three vertices: `(0, 0, 0) (6, 2, 3), (-4, 5, 1)`.
+   Calling `x(1, 0)` would return 0; `x(1, 1)` would return 6; and `x(1, 2)` would return -4.
    This routine should return a floating point value.
 
-  `Float normal_x(FaceId id) const`
-  `Float normal_y(FaceId id) const`
-  `Float normal_z(FaceId id) const`
-   Returns the x, y or z component of face `id`'s unit normal.
+  `Float normal_x(std::size_t index) const`
+  `Float normal_y(std::size_t index) const`
+  `Float normal_z(std::size_t index) const`
+   Returns the x, y or z component of face `index`'s unit normal.
    Because this routine will be called frequently and because we query the x, y and z components separately, it is a good idea to compute the unit normal a priori and store it for future accesses.
 
-  `Float d(FaceId id) const`
+  `Float d(std::size_t index) const`
    Returns the distance that the triangle lies along the normal vector from the origin.
 
-  `Float area(FaceId id) const`
+  `Float area(std::size_t index) const`
    Returns the surface area of the triangle in model units.
 
   `FaceId size() const`
    Number of triangles in the mesh.
 
-  `FaceIdIterator begin_face_id() const`
-  `FaceIdIterator end_face_id() const`
-   Iterator to the first face ID in the mesh, and the end of iteration through FaceIds respectively.
-   Iterating through the list of face IDs should be achievable using this object.
-   That is, the following for loop should print out the set of all valid FaceIds and their vertices in a mesh named `mesh` of type `Mesh`:
-
-```C++
-   for (Mesh::FaceIdIterator it = mesh.begin_face_id(); it != mesh.end_face_id(); ++it) {
-     std::cout << "Face(" << it << ") uses vertices " 
-               << "(" << mesh.x(it, 0) << "," mesh.y(it, 0) << "," << mesh.z(it, 0) << "), "
-               << "(" << mesh.x(it, 1) << "," mesh.y(it, 1) << "," << mesh.z(it, 1) << "), "
-               << "(" << mesh.x(it, 2) << "," mesh.y(it, 2) << "," << mesh.z(it, 2) << ")\n";
-   }
-```
-   
-   Whatever type is returned should be implicitly convertible into a FaceId type, and must support the pre- and post- operator++ interface.
-   It must support the operator!=(FaceIdIterator) interface to indicate that the current iterator is *not* at the end iterator.
-   Unless you are using an esoteric face ID (like a std::string), the FaceId type is probably sufficient.
-   For example, having the iterator be an int when the FaceId is an int will work perfectly.
+  `FaceId index_to_face_id(std::size_t index) const`
+   Convert a triangle index into a face ID.
 
 
 # Plan
@@ -214,7 +193,7 @@ Each mesh adapter must provide at least the following interface, but may provide
 **Calico is under development and does not currently function, except in the most basic manner.**
 
 - [X] Design mesh adapter interface
-  - [X] Explore refactoring the mesh adapter interface to use iterators for face IDs.
+  - [X] Explore refactoring the mesh adapter interface to use iterators for face IDs (decided to NOT use iterators because they complicated the design).
 - [X] Design ray adapter interface
   - [X] Provide helper adapter for structure-of-arrays ray inputs
 - [X] Implement a math library to support ray-tracing routines
